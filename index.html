@@ -633,7 +633,7 @@
     <section id="tab-alertas" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Alertas Críticas de Cobros Pendientes</h2>
-            <p class="text-xs text-slate-500 font-normal">Alertas tempranas para servicios próximos a ejecutarse y cuentas vencidas que no registran estatus al corriente.</p>
+            <p class="text-xs text-slate-500">Alertas tempranas para servicios próximos a ejecutarse y cuentas vencidas que no registran estatus al corriente.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -691,7 +691,7 @@
                     <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Google Sheet Destinatario (Autorizado)</span>
                     <a id="target-sheet-href" href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="text-xs text-emerald-600 font-bold hover:underline break-all block flex items-center gap-1">
                         https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
                 </div>
 
@@ -732,8 +732,35 @@ function doPost(e) {
     var ss = SpreadsheetApp.openById(spreadsheetId);
     var sheet = ss.getSheets()[0]; 
     
-    // Captura directa usando e.parameter (Form Url Encoded) - Súper Estable
-    var p = e.parameter;
+    // CAPTURA HÍBRIDA ULTRA-ROBUSTA: Lee parámetros nativos o decodifica el cuerpo de cualquier petición
+    var data = {};
+    
+    // 1. Leer parámetros directos de Google (CORS / Form POST / Query String)
+    if (e && e.parameter) {
+      for (var key in e.parameter) {
+        data[key] = e.parameter[key];
+      }
+    }
+    
+    // 2. Desglosar cuerpo si los navegadores lo empaquetan en contents
+    if (e && e.postData && e.postData.contents) {
+      try {
+        var json = JSON.parse(e.postData.contents);
+        for (var key in json) {
+          data[key] = json[key];
+        }
+      } catch (jsonErr) {
+        var parts = e.postData.contents.split('&');
+        for (var i = 0; i < parts.length; i++) {
+          var pair = parts[i].split('=');
+          if (pair.length == 2) {
+            var k = decodeURIComponent(pair[0].replace(/\+/g, ' '));
+            var v = decodeURIComponent(pair[1].replace(/\+/g, ' '));
+            data[k] = v;
+          }
+        }
+      }
+    }
     
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
@@ -745,28 +772,28 @@ function doPost(e) {
     }
     
     sheet.appendRow([
-      p.fechaRegistro || new Date().toLocaleString("es-MX"),
-      p.nombre || "",
-      p.tour || "",
-      p.provedor || "",
-      p.fecha || "",
-      Number(p.pax) || 0,
-      p.checkIn || "",
-      p.checkPoint || "",
-      p.confirmacion || "",
-      p.vendedor || "",
-      p.moneda || "",
-      Number(p.tipoCambio) || 1.00,
-      Number(p.balance) || 0,
-      Number(p.balanceMxn) || 0,
-      Number(p.reporte) || 0,
-      Number(p.diferencia) || 0,
-      p.quienDebe || "",
-      Number(p.cuantoDebe) || 0,
-      p.status || ""
+      data.fechaRegistro || new Date().toLocaleString("es-MX"),
+      data.nombre || "",
+      data.tour || "",
+      data.provedor || "",
+      data.fecha || "",
+      Number(data.pax) || 0,
+      data.checkIn || "",
+      data.checkPoint || "",
+      data.confirmacion || "",
+      data.vendedor || "",
+      data.moneda || "",
+      Number(data.tipoCambio) || 1.00,
+      Number(data.balance) || 0,
+      Number(data.balanceMxn) || 0,
+      Number(data.reporte) || 0,
+      Number(data.diferencia) || 0,
+      data.quienDebe || "",
+      Number(data.cuantoDebe) || 0,
+      data.status || ""
     ]);
     
-    return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Fila insertada"}))
+    return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados"}))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
@@ -853,6 +880,7 @@ function doGet(e) {
         calculateDifference();
     }
 
+    // Corregido: Se mapea con el evento de cambio manual
     function onCustomExchangeRateChange() {
         selectedExchangeRate = parseFloat(document.getElementById('custom-exchange-rate').value) || 1.00;
         calculateDifference();
@@ -1016,7 +1044,7 @@ function doGet(e) {
         };
 
         reservations.unshift(newReservation);
-        showToast("¡Reserva Registrada!", `Guardada temporalmente en la aplicación.`);
+        showToast("¡Reserva Registrada!", `Guardada en la memoria local.`);
         document.getElementById('reservation-form').reset();
         setCurrency('MXN');
         calculateDifference();
@@ -1030,11 +1058,10 @@ function doGet(e) {
         }
     }
 
-    // NUEVA ESTRATEGIA DE ENVÍO INDESTRUCTIBLE (URLSearchParams / Form-Encoded)
+    // ENVÍO DE DATOS RESISTENTE (Soporte multiprotocolo)
     async function sendToGoogleSheets(data) {
         if (!googleSheetsUrl) return false;
         try {
-            // Empaquetamos todo como formulario tradicional para evitar bloqueos de CORS JSON
             const searchParams = new URLSearchParams();
             for (const key in data) {
                 searchParams.append(key, data[key]);
@@ -1094,6 +1121,7 @@ function doGet(e) {
     async function testSheetsConnection() {
         showToast("Enviando Prueba", "Enviando fila de test...", "info");
         const now = new Date();
+        const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
         const testData = {
             nombre: "Cliente de Prueba (Martin Garzón)",
             tour: "Tour de Prueba de Conexión",
@@ -1113,7 +1141,7 @@ function doGet(e) {
             quienDebe: "Nadie",
             cuantoDebe: 0,
             status: "Al Corriente",
-            fechaRegistro: `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX')}`
+            fechaRegistro: currentTimestamp
         };
         const result = await sendToGoogleSheets(testData);
         if (result) showToast("Prueba Procesada", "Paquete enviado. Revisa tu Google Sheet en un segundo.", "success");
@@ -1121,13 +1149,13 @@ function doGet(e) {
 
     function copyAppsScript() {
         const codeElement = document.getElementById('apps-script-code');
-        const快捷 = document.createElement("textarea");
-        快捷.value = codeElement.innerText;
-        document.body.appendChild(快捷);
-        快捷.select();
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = codeElement.innerText;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
         document.execCommand('copy');
         showToast("Código Copiado", "Listo para pegar en Extensiones > Apps Script.", "success");
-        document.body.removeChild(快捷);
+        document.body.removeChild(tempTextArea);
     }
 </script>
 
