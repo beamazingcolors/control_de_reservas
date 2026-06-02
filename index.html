@@ -116,7 +116,7 @@
         }
     }
 
-    // Configuración de GitHub (Se guarda de forma súper segura en el localStorage de tu navegador)
+    // Configuración de GitHub (Se guarda en el localStorage)
     let githubToken = localStorage.getItem('github_token') || '';
     let githubUser = localStorage.getItem('github_user') || '';
     let githubRepo = localStorage.getItem('github_repo') || '';
@@ -124,12 +124,13 @@
     let githubBranch = localStorage.getItem('github_branch') || 'main';
     let autoSync = localStorage.getItem('github_autosync') !== 'false'; // por defecto verdadero
 
-    // Active Tab & Form State
+    // Active Tab, Form State & Edit state trackers
     let activeTab = 'nueva-reserva';
     let selectedCurrency = 'MXN';
     let selectedExchangeRate = 18.50; // Tipo de cambio inicial por defecto
+    let editingId = null; // Almacena el ID del registro que se está editando
 
-    // Helpers robustos de codificación Base64 con soporte Unicode (Acentos, Ñ, emojis)
+    // Helpers robustos de codificación Base64 con soporte Unicode
     function b64DecodeUnicode(str) {
         return decodeURIComponent(atob(str).split('').map(function(c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -269,7 +270,7 @@
     <section id="tab-nueva-reserva" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/50">
             <div>
-                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Registro de Reserva Inteligente</h2>
+                <h2 id="form-heading" class="text-xl font-extrabold text-slate-900 tracking-tight">Registro de Reserva Inteligente</h2>
                 <p class="text-xs text-slate-500">Automatización financiera con guardado directo en GitHub y soporte local instantáneo.</p>
             </div>
             <div class="flex items-center gap-2">
@@ -436,10 +437,16 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white rounded-2xl font-bold text-xs tracking-wider uppercase shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 active:scale-[0.98] transform flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    Registrar Reserva
-                </button>
+                <!-- Action Button Cluster containing new Dynamic Edit controls -->
+                <div class="flex gap-2">
+                    <button type="submit" id="submit-btn" class="flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold text-xs tracking-wider uppercase shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 active:scale-[0.98] transform flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        <span id="submit-btn-text">Registrar Reserva</span>
+                    </button>
+                    <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden py-3.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs tracking-wider uppercase transition-colors">
+                        Cancelar
+                    </button>
+                </div>
             </div>
         </form>
     </section>
@@ -676,7 +683,7 @@
     <section id="tab-github-config" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Sincronización en la Nube con GitHub</h2>
-            <p class="text-xs text-slate-500 font-normal">Olvídate de Google Sheets. Guarda tus reservas directamente en tu repositorio seguro de GitHub como un archivo JSON dinámico.</p>
+            <p class="text-xs text-slate-500 font-normal">Guarda tus reservas directamente en tu repositorio seguro de GitHub como un archivo JSON dinámico.</p>
         </div>
 
         <div class="p-4 bg-indigo-50 border-l-4 border-indigo-600 text-indigo-850 rounded-r-xl text-xs space-y-1.5">
@@ -685,7 +692,7 @@
                 💡 ¿Por qué GitHub es mejor y 100% confiable?
             </h4>
             <p class="leading-relaxed">
-                Google Sheets suele dar problemas de conexión debido a restricciones del navegador y de CORS. Al enlazar un archivo `.json` de GitHub, tu información se almacena con alta seguridad, en tiempo real, con historial de cambios, y sin cortes de red.
+                Al enlazar un archivo `.json` de GitHub, tu información se almacena con alta seguridad, en tiempo real, con historial de cambios y sin cortes de red.
             </p>
         </div>
 
@@ -744,12 +751,11 @@
             <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
                 <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">¿Cómo obtener tus credenciales de GitHub?</h3>
                 <ol class="space-y-3.5 text-xs text-slate-500 list-decimal pl-4 leading-relaxed">
-                    <li>Entra a tu cuenta en <a href="https://github.com" target="_blank" class="text-indigo-600 hover:underline font-bold">GitHub</a> y crea un repositorio (público o privado), por ejemplo, llamado <span class="font-mono bg-slate-100 px-1 rounded font-bold text-slate-700">control-reservas</span>.</li>
+                    <li>Entra a tu cuenta en <a href="https://github.com" target="_blank" class="text-indigo-600 hover:underline font-bold">GitHub</a> y crea un repositorio (público o privado).</li>
                     <li>Ve a tu **Perfil > Settings > Developer Settings > Personal Access Tokens > Tokens (classic)**.</li>
-                    <li>Genera un nuevo token con permisos mínimos de escritura en tus repositorios (marca únicamente la casilla **`repo`** o **`public_repo`** si tu repositorio es público).</li>
+                    <li>Genera un nuevo token con permisos mínimos de escritura en tus repositorios (marca únicamente la casilla **`repo`** o **`public_repo`**).</li>
                     <li>Copia el token que inicia con <span class="font-bold text-indigo-700 font-mono">ghp_...</span> y pégalo en la casilla de la izquierda.</li>
-                    <li>Define la ruta del archivo (como <span class="font-mono bg-slate-100 px-1 rounded text-slate-700 font-bold">reservas.json</span>) y presiona **Guardar**.</li>
-                    <li>¡Listo! El sistema sincronizará tu base de datos cada vez que añadas o actualices una reserva de forma invisible.</li>
+                    <li>Define la ruta del archivo y presiona **Guardar**.</li>
                 </ol>
             </div>
         </div>
@@ -759,7 +765,7 @@
 <!-- Detail Modal -->
 <div id="reservation-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-100">
@@ -786,6 +792,7 @@
     let financialChartInstance = null;
     let debtsChartInstance = null;
 
+    // Toggle menu móvil
     function toggleMobileMenu() {
         const drawer = document.getElementById('mobile-drawer');
         if (drawer.classList.contains('-translate-x-full')) {
@@ -797,6 +804,7 @@
         }
     }
 
+    // Llenar selector check-in
     function populateCheckInDropdown() {
         const select = document.getElementById('checkIn');
         select.innerHTML = '';
@@ -813,6 +821,7 @@
         }
     }
 
+    // Evento de cambio de tipo de cambio
     function onExchangeDropdownChange() {
         const dropdown = document.getElementById('exchange-rate-select');
         const customContainer = document.getElementById('custom-rate-input-container');
@@ -826,11 +835,13 @@
         calculateDifference();
     }
 
+    // Cambio del campo manual de tipo de cambio
     function onCustomExchangeRateChange() {
         selectedExchangeRate = parseFloat(document.getElementById('custom-exchange-rate').value) || 1.00;
         calculateDifference();
     }
 
+    // Definición de moneda
     function setCurrency(curr) {
         selectedCurrency = curr;
         const btnUsd = document.getElementById('currency-usd');
@@ -855,6 +866,7 @@
         onExchangeDropdownChange();
     }
 
+    // Cálculos dinámicos de balance y deudas
     function calculateDifference() {
         const rawBalance = parseFloat(document.getElementById('balance').value) || 0;
         const rawReporte = parseFloat(document.getElementById('reporte').value) || 0;
@@ -891,6 +903,7 @@
         }
     }
 
+    // Actualiza el estatus gráfico en el letrero no-interactivo
     function updateCalculatedLetrero(status, debtor, amount) {
         const letrero = document.getElementById('status-letrero');
         const labelQuien = document.getElementById('label-quien-debe');
@@ -907,6 +920,7 @@
         }
     }
 
+    // Lanzar alertas flotantes (Toasts) de éxito o error
     function showToast(title, desc, type = 'success') {
         const toast = document.getElementById('toast');
         const iconWrapper = document.getElementById('toast-icon-wrapper');
@@ -949,6 +963,78 @@
         else if (tabId === 'alertas') renderAlerts();
     }
 
+    // Iniciar edición de una reserva seleccionada
+    function startEdit(id) {
+        const res = reservations.find(r => r.id === id);
+        if (!res) return;
+
+        editingId = id;
+        
+        // Cambiar tabuladores visualmente
+        switchTab('nueva-reserva');
+
+        // Poblar formulario principal con los datos correspondientes
+        document.getElementById('nombre').value = res.nombre;
+        document.getElementById('tour').value = res.tour;
+        document.getElementById('provedor').value = res.provedor;
+        document.getElementById('fecha').value = res.fecha;
+        document.getElementById('pax').value = res.pax;
+        document.getElementById('checkIn').value = res.checkIn;
+        document.getElementById('checkPoint').value = res.checkPoint;
+        document.getElementById('confirmacion').value = res.confirmacion;
+        document.getElementById('vendedor').value = res.vendedor;
+        document.getElementById('balance').value = res.balance;
+        document.getElementById('reporte').value = res.reporte;
+
+        // Establecer monedas y tipos de cambio
+        setCurrency(res.moneda);
+        if (res.moneda === 'USD') {
+            const select = document.getElementById('exchange-rate-select');
+            const customInput = document.getElementById('custom-exchange-rate');
+            
+            // Si el tipo de cambio coincide con un valor estándar del select, seleccionarlo
+            let matched = false;
+            for (let i = 0; i < select.options.length; i++) {
+                if (parseFloat(select.options[i].value) === parseFloat(res.tipoCambio)) {
+                    select.selectedIndex = i;
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                select.value = "custom";
+                document.getElementById('custom-rate-input-container').classList.remove('hidden');
+                customInput.value = res.tipoCambio;
+            } else {
+                document.getElementById('custom-rate-input-container').classList.add('hidden');
+            }
+            selectedExchangeRate = res.tipoCambio;
+        }
+
+        // Modificar elementos de envío
+        document.getElementById('form-heading').innerText = "Editar Reserva Activa";
+        document.getElementById('submit-btn-text').innerText = "Actualizar Reserva";
+        document.getElementById('submit-btn').className = "flex-1 py-3.5 bg-indigo-600 text-white rounded-2xl font-bold text-xs tracking-wider uppercase shadow-md shadow-indigo-600/10 hover:bg-indigo-700 transition-colors focus:ring-4 focus:ring-indigo-500/20 active:scale-[0.98] transform flex items-center justify-center gap-2";
+        document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+        calculateDifference();
+        closeModal();
+        showToast("Modo Edición Activado", `Modificando reserva de ${res.nombre}.`, "info");
+    }
+
+    // Cancelar la edición activa
+    function cancelEdit() {
+        editingId = null;
+        document.getElementById('reservation-form').reset();
+        setCurrency('MXN');
+        document.getElementById('form-heading').innerText = "Registro de Reserva Inteligente";
+        document.getElementById('submit-btn-text').innerText = "Registrar Reserva";
+        document.getElementById('submit-btn').className = "flex-1 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold text-xs tracking-wider uppercase shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 active:scale-[0.98] transform flex items-center justify-center gap-2";
+        document.getElementById('cancel-edit-btn').classList.add('hidden');
+        calculateDifference();
+    }
+
     async function handleFormSubmit(event) {
         event.preventDefault();
         const rawBalance = parseFloat(document.getElementById('balance').value) || 0;
@@ -965,38 +1051,69 @@
         const now = new Date();
         const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
 
-        const newReservation = {
-            id: Date.now().toString(),
-            nombre: document.getElementById('nombre').value,
-            tour: document.getElementById('tour').value,
-            provedor: document.getElementById('provedor').value,
-            fecha: document.getElementById('fecha').value,
-            pax: parseInt(document.getElementById('pax').value) || 1,
-            checkIn: document.getElementById('checkIn').value,
-            checkPoint: document.getElementById('checkPoint').value,
-            confirmacion: document.getElementById('confirmacion').value,
-            vendedor: document.getElementById('vendedor').value,
-            moneda: selectedCurrency,
-            tipoCambio: selectedExchangeRate,
-            balance: rawBalance,
-            balanceMxn: calculatedBalanceMxn,
-            reporte: rawReporte,
-            diferencia: diferenciaMxn,
-            quienDebe: debtor,
-            cuantoDebe: debtAmount,
-            status: calculatedStatus,
-            fechaRegistro: currentTimestamp
-        };
+        if (editingId !== null) {
+            // BUSCAR Y ACTUALIZAR RESERVA EXISTENTE
+            const index = reservations.findIndex(r => r.id === editingId);
+            if (index !== -1) {
+                reservations[index] = {
+                    ...reservations[index],
+                    nombre: document.getElementById('nombre').value,
+                    tour: document.getElementById('tour').value,
+                    provedor: document.getElementById('provedor').value,
+                    fecha: document.getElementById('fecha').value,
+                    pax: parseInt(document.getElementById('pax').value) || 1,
+                    checkIn: document.getElementById('checkIn').value,
+                    checkPoint: document.getElementById('checkPoint').value,
+                    confirmacion: document.getElementById('confirmacion').value,
+                    vendedor: document.getElementById('vendedor').value,
+                    moneda: selectedCurrency,
+                    tipoCambio: selectedExchangeRate,
+                    balance: rawBalance,
+                    balanceMxn: calculatedBalanceMxn,
+                    reporte: rawReporte,
+                    diferencia: diferenciaMxn,
+                    quienDebe: debtor,
+                    cuantoDebe: debtAmount,
+                    status: calculatedStatus
+                    // Se conserva la fecha original de registro
+                };
+                showToast("¡Reserva Actualizada!", `Los cambios en la cuenta de ${reservations[index].nombre} se guardaron localmente.`, "success");
+            }
+            cancelEdit();
+        } else {
+            // REGISTRAR NUEVA RESERVA
+            const newReservation = {
+                id: Date.now().toString(),
+                nombre: document.getElementById('nombre').value,
+                tour: document.getElementById('tour').value,
+                provedor: document.getElementById('provedor').value,
+                fecha: document.getElementById('fecha').value,
+                pax: parseInt(document.getElementById('pax').value) || 1,
+                checkIn: document.getElementById('checkIn').value,
+                checkPoint: document.getElementById('checkPoint').value,
+                confirmacion: document.getElementById('confirmacion').value,
+                vendedor: document.getElementById('vendedor').value,
+                moneda: selectedCurrency,
+                tipoCambio: selectedExchangeRate,
+                balance: rawBalance,
+                balanceMxn: calculatedBalanceMxn,
+                reporte: rawReporte,
+                diferencia: diferenciaMxn,
+                quienDebe: debtor,
+                cuantoDebe: debtAmount,
+                status: calculatedStatus,
+                fechaRegistro: currentTimestamp
+            };
 
-        reservations.unshift(newReservation);
+            reservations.unshift(newReservation);
+            showToast("¡Reserva Registrada!", `Guardada con éxito de forma local.`, "success");
+            document.getElementById('reservation-form').reset();
+            setCurrency('MXN');
+            calculateDifference();
+        }
         
-        // Guardar en la caché del navegador para no perder información
+        // Persistir en cache
         localStorage.setItem('local_reservations', JSON.stringify(reservations));
-        showToast("¡Reserva Registrada!", `Guardada en la base de datos local de forma inmediata.`);
-        
-        document.getElementById('reservation-form').reset();
-        setCurrency('MXN');
-        calculateDifference();
         updateAlertCount();
 
         // Enviar automáticamente a GitHub si está configurado
@@ -1080,7 +1197,7 @@
                 if (!silent) showToast("¡Sincronizado!", "Tus datos se guardaron con éxito en tu repositorio de GitHub.", "success");
             } else {
                 updateGitHubIndicator(false);
-                if (!silent) showToast("Error de Empuje", "GitHub rechazó la actualización del archivo.", "error");
+                if (!silent) showToast("Error de Sincronización", "GitHub rechazó la actualización del archivo.", "error");
             }
         } catch (error) {
             console.error(error);
@@ -1111,45 +1228,6 @@
         } catch (e) {
             showToast("Error de Importación", "No pudimos descargar el archivo reservas.json.", "error");
         }
-    }
-
-    // Copiado inteligente compatible con pegado directo (Ctrl + V)
-    function copyRowForSheet(id) {
-        const res = reservations.find(r => r.id === id);
-        if (!res) return;
-        
-        const rowData = [
-            res.id || "",
-            res.nombre || "",
-            res.tour || "",
-            res.provedor || "",
-            res.fecha || "",
-            res.pax || 0,
-            res.checkIn || "",
-            res.checkPoint || "",
-            res.confirmacion || "",
-            res.vendedor || "",
-            res.moneda || "",
-            res.tipoCambio || 1.00,
-            res.balance || 0,
-            res.balanceMxn || 0,
-            res.reporte || 0,
-            res.diferencia || 0,
-            res.quienDebe || "",
-            res.cuantoDebe || 0,
-            res.status || "",
-            res.fechaRegistro || ""
-        ];
-        
-        const tsvString = rowData.join("\t");
-        const tempTextArea = document.createElement("textarea");
-        tempTextArea.value = tsvString;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempTextArea);
-        
-        showToast("¡Fila Copiada!", "Selecciona una celda vacía en Excel o Google Sheet y presiona Ctrl + V para rellenar.", "success");
     }
 
     // GENERAR Y BAJAR ARCHIVO EXCEL DE FORMA LOCAL (XLSX REAL)
@@ -1188,6 +1266,25 @@
         XLSX.writeFile(workbook, `Reservas_MartinGarzon_${new Date().toISOString().split('T')[0]}.xlsx`);
         showToast("Excel Descargado", "El archivo de reservas se ha generado y descargado correctamente.", "success");
     }
+
+    // Eliminar reserva directa de la base de datos local y sincronizada
+    function deleteReservation(id) {
+        const index = reservations.findIndex(r => r.id === id);
+        if (index === -1) return;
+        const nombreEliminado = reservations[index].nombre;
+
+        reservations.splice(index, 1);
+        localStorage.setItem('local_reservations', JSON.stringify(reservations));
+        showToast("Registro Eliminado", `La reserva de ${nombreEliminado} fue borrada.`, "success");
+        
+        closeModal();
+        renderDashboard();
+        updateAlertCount();
+
+        if (githubToken && githubUser && githubRepo && autoSync) {
+            pushToGitHub(true);
+        }
+    }
 </script>
 
 <script>
@@ -1210,37 +1307,6 @@
         });
         calculateDifference();
         updateAlertCount();
-    }
-
-    function saveGitHubConfig() {
-        githubToken = document.getElementById('github-token-input').value.trim();
-        githubUser = document.getElementById('github-user-input').value.trim();
-        githubRepo = document.getElementById('github-repo-input').value.trim();
-        githubPath = document.getElementById('github-path-input').value.trim() || 'reservas.json';
-        githubBranch = document.getElementById('github-branch-input').value.trim() || 'main';
-        autoSync = document.getElementById('github-autosync-input').checked;
-
-        localStorage.setItem('github_token', githubToken);
-        localStorage.setItem('github_user', githubUser);
-        localStorage.setItem('github_repo', githubRepo);
-        localStorage.setItem('github_path', githubPath);
-        localStorage.setItem('github_branch', githubBranch);
-        localStorage.setItem('github_autosync', autoSync);
-
-        updateGitHubIndicator(githubToken !== '');
-        showToast("Configuración Guardada", "Tus credenciales de GitHub se han guardado con éxito.", "success");
-    }
-
-    function updateGitHubIndicator(connected) {
-        const indicator = document.getElementById('github-indicator');
-        const indicatorText = document.getElementById('github-indicator-text');
-        if (connected) {
-            indicator.className = "h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse";
-            indicatorText.innerText = "GitHub: Conectado";
-        } else {
-            indicator.className = "h-2.5 w-2.5 rounded-full bg-amber-400";
-            indicatorText.innerText = "GitHub: Desconectado";
-        }
     }
 </script>
 
@@ -1315,11 +1381,15 @@
                 <td class="px-5 py-3 font-bold">$${res.cuantoDebe.toFixed(2)}<br><span class="text-[8px] text-slate-400">${res.quienDebe}</span></td>
                 <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${res.status === 'Al Corriente' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">${res.status}</span></td>
                 <td class="px-5 py-3 text-center">
-                    <div class="flex items-center justify-center gap-1.5">
-                        <button onclick="openDetailsModal('${res.id}')" class="text-indigo-600 font-bold hover:underline">Ver</button>
-                        <span class="text-slate-300">|</span>
-                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                    <div class="flex items-center justify-center gap-1.5 flex-wrap md:flex-nowrap">
+                        <button onclick="openDetailsModal('${res.id}')" class="text-indigo-600 font-bold hover:underline text-[10px] uppercase">Ver</button>
+                        <span class="text-slate-300 hidden md:inline">|</span>
+                        <button onclick="startEdit('${res.id}')" class="text-amber-600 font-bold hover:underline text-[10px] uppercase">Editar</button>
+                        <span class="text-slate-300 hidden md:inline">|</span>
+                        <button onclick="deleteReservation('${res.id}')" class="text-rose-600 font-bold hover:underline text-[10px] uppercase">Borrar</button>
+                        <span class="text-slate-300 hidden md:inline">|</span>
+                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5 text-[10px] uppercase">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             Copiar
                         </button>
                     </div>
@@ -1329,6 +1399,7 @@
         });
     }
 
+    // Visor de detalles de reservas ampliado con botones rápidos de acción
     function openDetailsModal(id) {
         const res = reservations.find(r => r.id === id);
         if (!res) return;
@@ -1343,12 +1414,20 @@
                 <div><span class="text-slate-400 block text-[9px]">BALANCE ORIGINAL</span><span class="font-bold text-slate-900">$${res.balance.toFixed(2)}</span></div>
                 <div><span class="text-slate-400 block text-[9px]">REPORTE MXN</span><span class="font-bold text-slate-900">$${res.reporte.toFixed(2)}</span></div>
                 <div><span class="text-slate-400 block text-[9px]">DIFERENCIA MXN</span><span class="font-bold ${res.diferencia >= 0 ? 'text-emerald-600':'text-rose-600'}">$${res.diferencia.toFixed(2)}</span></div>
+                <div><span class="text-slate-400 block text-[9px]">A DEBER / COBRAR</span><span class="font-bold text-rose-600">$${res.cuantoDebe.toFixed(2)} MXN</span></div>
+                <div><span class="text-slate-400 block text-[9px]">QUIEN DEBE</span><span class="font-semibold text-slate-800">${res.quienDebe}</span></div>
             </div>
         `;
         
         document.getElementById('modal-action-buttons').innerHTML = `
-            <button type="button" onclick="copyRowForSheet('${res.id}')" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-indigo-600 text-xs font-bold uppercase text-white hover:bg-indigo-700 focus:outline-none sm:w-auto">
-                Copiar Fila para Sheet (Pegar rápido)
+            <button type="button" onclick="startEdit('${res.id}')" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-amber-600 text-xs font-bold uppercase text-white hover:bg-amber-700 focus:outline-none">
+                Editar
+            </button>
+            <button type="button" onclick="deleteReservation('${res.id}')" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-rose-600 text-xs font-bold uppercase text-white hover:bg-rose-700 focus:outline-none">
+                Eliminar
+            </button>
+            <button type="button" onclick="copyRowForSheet('${res.id}')" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-slate-200 shadow-xs px-4 py-2 bg-slate-50 hover:bg-slate-100 text-xs font-bold uppercase text-slate-700 focus:outline-none">
+                Copiar Fila
             </button>
         `;
         document.getElementById('reservation-modal').classList.remove('hidden');
@@ -1356,7 +1435,6 @@
 
     function closeModal() { document.getElementById('reservation-modal').classList.add('hidden'); }
 
-    // SALDOS & LIQUIDACIÓN COMPLETAMENTE CORREGIDO Y CALCULANDO
     function renderLiquidation() {
         const container = document.getElementById('liquidation-cards-container');
         const select = document.getElementById('settle-reservation-select');
