@@ -128,6 +128,19 @@
     let activeTab = 'nueva-reserva';
     let selectedCurrency = 'MXN';
     let selectedExchangeRate = 18.50; // Tipo de cambio inicial por defecto
+
+    // Helpers robustos de codificación Base64 con soporte Unicode (Acentos, Ñ, emojis)
+    function b64DecodeUnicode(str) {
+        return decodeURIComponent(atob(str).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    }
+    function b64EncodeUnicode(str) {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+                return String.fromCharCode('0x' + p1);
+        }));
+    }
 </script>
 
 <!-- Mobile Top Navigation Header -->
@@ -181,7 +194,7 @@
                 </span>
                 <span id="mobile-alert-badge" class="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
             </button>
-            <button onclick="switchTab('sheets-config'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50">
+            <button onclick="switchTab('github-config'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50">
                 <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
                 Configuración GitHub
             </button>
@@ -205,7 +218,7 @@
             </div>
             <div>
                 <h1 class="font-extrabold text-slate-900 text-sm leading-tight tracking-tight">Martin Garzón</h1>
-                <p class="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Control Financiero</p>
+                <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Control Financiero</p>
             </div>
         </div>
     </div>
@@ -230,7 +243,7 @@
             </span>
             <span id="alert-badge" class="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
         </button>
-        <button onclick="switchTab('sheets-config')" id="btn-sheets-config" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-950">
+        <button onclick="switchTab('github-config')" id="btn-github-config" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-950">
             <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
             Configuración GitHub
         </button>
@@ -660,7 +673,7 @@
     </section>
 
     <!-- TAB 5: GITHUB CONFIG -->
-    <section id="tab-sheets-config" class="space-y-6 hidden">
+    <section id="tab-github-config" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Sincronización en la Nube con GitHub</h2>
             <p class="text-xs text-slate-500 font-normal">Olvídate de Google Sheets. Guarda tus reservas directamente en tu repositorio seguro de GitHub como un archivo JSON dinámico.</p>
@@ -711,7 +724,7 @@
 
                     <div class="flex items-center gap-2 py-1">
                         <input type="checkbox" id="github-autosync-input" class="rounded text-indigo-600 focus:ring-indigo-500">
-                        <label for="github-autosync-input" class="text-xs text-slate-600 font-semibold select-none">Auto-sincronizar automáticamente al registrar</label>
+                        <label for="github-autosync-input" class="text-xs text-slate-600 font-semibold select-none">Auto-sincronizar automáticamente al registrar/editar</label>
                     </div>
 
                     <div class="flex gap-2 pt-2">
@@ -722,7 +735,7 @@
                             Importar de GitHub
                         </button>
                         <button onclick="pushToGitHub()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all">
-                            Subir Reservas
+                            Probar Conexión GitHub
                         </button>
                     </div>
                 </div>
@@ -736,7 +749,7 @@
                     <li>Genera un nuevo token con permisos mínimos de escritura en tus repositorios (marca únicamente la casilla **`repo`** o **`public_repo`** si tu repositorio es público).</li>
                     <li>Copia el token que inicia con <span class="font-bold text-indigo-700 font-mono">ghp_...</span> y pégalo en la casilla de la izquierda.</li>
                     <li>Define la ruta del archivo (como <span class="font-mono bg-slate-100 px-1 rounded text-slate-700 font-bold">reservas.json</span>) y presiona **Guardar**.</li>
-                    <li>¡Listo! El sistema sincronizará tu base de datos cada vez que añadas una reserva de forma invisible.</li>
+                    <li>¡Listo! El sistema sincronizará tu base de datos cada vez que añadas o actualices una reserva de forma invisible.</li>
                 </ol>
             </div>
         </div>
@@ -992,7 +1005,7 @@
         }
     }
 
-    // MONTAÑA DE CONECTIVIDAD DIRECTA CON GITHUB API (PULL & PUSH DIRECTO)
+    // CONECTIVIDAD DIRECTA CON GITHUB API (PULL & PUSH DIRECTO)
     async function getGitHubFileInfo() {
         const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${githubPath}?ref=${githubBranch}`;
         try {
@@ -1004,7 +1017,7 @@
             });
             if (res.status === 200) {
                 const json = await res.json();
-                const decodedContent = decodeURIComponent(escape(atob(json.content)));
+                const decodedContent = b64DecodeUnicode(json.content);
                 return {
                     sha: json.sha,
                     content: JSON.parse(decodedContent)
@@ -1028,7 +1041,7 @@
             const fileInfo = await getGitHubFileInfo();
             const currentSha = fileInfo ? fileInfo.sha : null;
             
-            // Si el archivo ya existe en GitHub, fusionar los datos para evitar sobreescribir otros ingresos
+            // Fusionar datos locales y remotos para no sobreescribir otros ingresos
             let finalReservations = [...reservations];
             if (fileInfo && Array.isArray(fileInfo.content)) {
                 const localIds = new Set(reservations.map(r => r.id));
@@ -1037,15 +1050,13 @@
                         finalReservations.push(remoteRes);
                     }
                 });
-                // Reordenar por fecha de registro descendiente
                 finalReservations.sort((a,b) => b.id.localeCompare(a.id));
                 reservations = finalReservations;
                 localStorage.setItem('local_reservations', JSON.stringify(reservations));
             }
 
             const rawContent = JSON.stringify(reservations, null, 2);
-            // Convertir de forma segura para no romper caracteres latinos (acentos, Ñ, etc.)
-            const base64Content = btoa(unescape(encodeURIComponent(rawContent)));
+            const base64Content = b64EncodeUnicode(rawContent);
 
             const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${githubPath}`;
             const body = {
@@ -1102,7 +1113,7 @@
         }
     }
 
-    // Copiado inteligente compatible con pegado directo (Ctrl + V) en Sheet
+    // Copiado inteligente compatible con pegado directo (Ctrl + V)
     function copyRowForSheet(id) {
         const res = reservations.find(r => r.id === id);
         if (!res) return;
@@ -1307,7 +1318,7 @@
                     <div class="flex items-center justify-center gap-1.5">
                         <button onclick="openDetailsModal('${res.id}')" class="text-indigo-600 font-bold hover:underline">Ver</button>
                         <span class="text-slate-300">|</span>
-                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido en Google Sheet" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5">
+                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             Copiar
                         </button>
@@ -1345,38 +1356,273 @@
 
     function closeModal() { document.getElementById('reservation-modal').classList.add('hidden'); }
 
+    // SALDOS & LIQUIDACIÓN COMPLETAMENTE CORREGIDO Y CALCULANDO
     function renderLiquidation() {
         const container = document.getElementById('liquidation-cards-container');
-        const pending = reservations.filter(r => r.status === 'Pendiente');
-        container.innerHTML = '';
+        const select = document.getElementById('settle-reservation-select');
+        const pending = reservations.filter(r => r.status === 'Pendiente' && r.cuantoDebe > 0.01);
         
-        if(pending.length === 0) {
-            container.innerHTML = `<p class="text-xs text-slate-400 p-4">Cuentas al corriente.</p>`;
+        container.innerHTML = '';
+        select.innerHTML = '';
+        
+        if (pending.length === 0) {
+            container.innerHTML = `
+                <div class="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <p class="text-xs text-slate-500">¡Felicidades! Todas las cuentas se encuentran saldadas al corriente en este momento.</p>
+                </div>
+            `;
+            select.innerHTML = `<option value="">Sin saldos pendientes</option>`;
+            document.getElementById('settle-summary').classList.add('hidden');
+            document.getElementById('pending-debts-count').innerText = `0 pendientes`;
             return;
         }
+        
+        document.getElementById('settle-summary').classList.remove('hidden');
+        document.getElementById('pending-debts-count').innerText = `${pending.length} pendientes`;
+        
         pending.forEach(res => {
-            const div = document.createElement('div');
-            div.className = "p-3 bg-white rounded-xl border flex justify-between items-center text-xs shadow-xs";
-            div.innerHTML = `
+            const isOwedToProv = res.quienDebe === 'Proveedor';
+            const badgeColor = isOwedToProv ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+            
+            const card = document.createElement('div');
+            card.className = "p-4 bg-white border border-slate-100 rounded-2xl hover:border-slate-200 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xs";
+            card.innerHTML = `
                 <div>
-                    <strong>${res.nombre}</strong> - ${res.tour}<br>
-                    <span class="text-[10px] text-rose-600 font-bold">Debe: $${res.cuantoDebe.toFixed(2)} a ${res.quienDebe}</span>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h4 class="font-bold text-slate-900 text-xs">${res.nombre}</h4>
+                        <span class="text-[10px] text-slate-400 font-semibold">(${res.tour})</span>
+                    </div>
+                    <div class="flex items-center gap-3 mt-1.5 text-[10px] text-slate-500">
+                        <span>Vendedor: <strong>${res.vendedor}</strong></span>
+                        <span>•</span>
+                        <span>Proveedor: <strong>${res.provedor}</strong></span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-1">Fecha del servicio: ${res.fecha} • Confirmación: ${res.confirmacion}</p>
                 </div>
-                <button onclick="copyRowForSheet('${res.id}')" class="px-2.5 py-1.5 bg-slate-50 border hover:bg-slate-100 rounded-lg text-indigo-600 text-[10px] font-bold flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                    Copiar
-                </button>
+                
+                <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-50 pt-3 sm:pt-0">
+                    <div class="text-left sm:text-right">
+                        <span class="text-[9px] text-slate-400 uppercase font-bold block">Saldo Pendiente</span>
+                        <span class="text-xs font-extrabold text-rose-600 block">$${res.cuantoDebe.toFixed(2)} MXN</span>
+                        <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase inline-block ${badgeColor}">A: ${res.quienDebe}</span>
+                    </div>
+                    <button onclick="selectForLiquidation('${res.id}')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all">
+                        Conciliar
+                    </button>
+                </div>
             `;
-            container.appendChild(div);
+            container.appendChild(card);
+            
+            const option = document.createElement('option');
+            option.value = res.id;
+            option.innerText = `${res.nombre} - ${res.tour} ($${res.cuantoDebe.toFixed(2)} MXN)`;
+            select.appendChild(option);
         });
+        
+        onSettleSelectionChange();
     }
 
+    function selectForLiquidation(id) {
+        const select = document.getElementById('settle-reservation-select');
+        select.value = id;
+        onSettleSelectionChange();
+        showToast("Cuenta Seleccionada", "La cuenta se ha cargado en el formulario de conciliación del panel derecho.", "info");
+    }
+
+    function onSettleSelectionChange() {
+        const select = document.getElementById('settle-reservation-select');
+        const id = select.value;
+        if (!id || id === "") {
+            document.getElementById('settle-summary').classList.add('hidden');
+            return;
+        }
+        
+        const res = reservations.find(r => r.id === id);
+        if (!res) return;
+        
+        document.getElementById('settle-summary').classList.remove('hidden');
+        document.getElementById('settle-who-badge').innerText = res.quienDebe;
+        document.getElementById('settle-initial-diff').innerText = `${res.diferencia >= 0 ? '+' : ''}$${res.diferencia.toFixed(2)} MXN`;
+        document.getElementById('settle-current-debt').innerText = `$${res.cuantoDebe.toFixed(2)} MXN`;
+        document.getElementById('settle-payment-amount').value = res.cuantoDebe.toFixed(2);
+    }
+
+    function applyAbono() {
+        const select = document.getElementById('settle-reservation-select');
+        const id = select.value;
+        const abono = parseFloat(document.getElementById('settle-payment-amount').value) || 0;
+
+        if (!id) return;
+        const res = reservations.find(r => r.id === id);
+        if (!res) return;
+
+        if (abono <= 0) {
+            showToast("Cantidad inválida", "Por favor ingresa una cantidad de abono mayor a cero.", "error");
+            return;
+        }
+
+        if (abono > res.cuantoDebe + 0.01) {
+            showToast("Abono Excedido", "El monto ingresado no puede superar la deudor total pendiente.", "error");
+            return;
+        }
+
+        res.cuantoDebe -= abono;
+        if (res.cuantoDebe <= 0.01) {
+            res.cuantoDebe = 0;
+            res.status = 'Al Corriente';
+            res.quienDebe = 'Nadie';
+        }
+
+        // Guardar cambios localmente
+        localStorage.setItem('local_reservations', JSON.stringify(reservations));
+        showToast("Abono Aplicado", `Se restaron $${abono.toFixed(2)} MXN de la deuda de ${res.nombre}.`, "success");
+        
+        renderLiquidation();
+        updateAlertCount();
+
+        // Sincronizar con GitHub si está configurado
+        if (githubToken && githubUser && githubRepo && autoSync) {
+            pushToGitHub(true);
+        }
+    }
+
+    function markFullySettled() {
+        const select = document.getElementById('settle-reservation-select');
+        const id = select.value;
+
+        if (!id) return;
+        const res = reservations.find(r => r.id === id);
+        if (!res) return;
+
+        res.cuantoDebe = 0;
+        res.status = 'Al Corriente';
+        res.quienDebe = 'Nadie';
+
+        // Guardar cambios localmente
+        localStorage.setItem('local_reservations', JSON.stringify(reservations));
+        showToast("Cuenta Liquidada", `La cuenta de ${res.nombre} se encuentra ahora Al Corriente.`, "success");
+        
+        renderLiquidation();
+        updateAlertCount();
+
+        // Sincronizar con GitHub si está configurado
+        if (githubToken && githubUser && githubRepo && autoSync) {
+            pushToGitHub(true);
+        }
+    }
+
+    // GESTIÓN DE ALERTAS DINÁMICAS
     function renderAlerts() {
         const container = document.getElementById('alerts-list-container');
-        container.innerHTML = `<p class="text-xs text-slate-400 p-4">Monitoreo de plazos activo.</p>`;
+        container.innerHTML = '';
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        let alertCount = 0;
+
+        reservations.forEach(res => {
+            if (res.status === 'Al Corriente') return;
+
+            const resDate = new Date(res.fecha);
+            resDate.setHours(0,0,0,0);
+
+            const diffTime = resDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            let alertType = ''; 
+            let title = '';
+            let message = '';
+
+            if (diffDays < 0) {
+                alertType = 'critical';
+                title = `Crítica: Deuda Vencida`;
+                message = `La fecha del servicio (${res.fecha}) ya ha transcurrido y aún se registran $${res.cuantoDebe.toFixed(2)} MXN sin pagar a favor de: ${res.quienDebe}.`;
+                alertCount++;
+            } else if (diffDays >= 0 && diffDays <= 2) {
+                alertType = 'warning';
+                title = `Preventiva: Servicio Próximo`;
+                message = `El tour se llevará a cabo en los próximos ${diffDays === 0 ? 'hoy' : (diffDays === 1 ? '1 día' : '2 días')} y registra un saldo pendiente de $${res.cuantoDebe.toFixed(2)} MXN a favor de: ${res.quienDebe}.`;
+                alertCount++;
+            }
+
+            if (alertType) {
+                const borderClass = alertType === 'critical' ? 'border-l-4 border-l-rose-500 border-rose-100' : 'border-l-4 border-l-amber-500 border-amber-100';
+                const bgClass = alertType === 'critical' ? 'bg-rose-50/25' : 'bg-amber-50/25';
+                const tag = alertType === 'critical' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-amber-50 text-amber-700 border border-amber-100';
+
+                const alertCard = document.createElement('div');
+                alertCard.className = `p-5 bg-white border ${borderClass} ${bgClass} rounded-2xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4`;
+                alertCard.innerHTML = `
+                    <div class="space-y-1 flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide ${tag}">
+                                ${alertType === 'critical' ? 'Crítico' : 'Próximo'}
+                            </span>
+                            <h4 class="font-bold text-slate-900 text-xs">${title}</h4>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">${message}</p>
+                        <div class="pt-1.5 flex flex-wrap items-center gap-3 text-[10px] text-slate-400">
+                            <span>Cliente: <strong>${res.nombre}</strong></span>
+                            <span>•</span>
+                            <span>Tour: <strong>${res.tour}</strong></span>
+                            <span>•</span>
+                            <span>Confirmación: <strong>${res.confirmacion}</strong></span>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('control-pagos'); selectForLiquidation('${res.id}')" class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wider rounded-xl shadow-xs shrink-0 transition-all self-end md:self-auto">
+                        Resolver Pago
+                    </button>
+                `;
+                container.appendChild(alertCard);
+            }
+        });
+
+        if (alertCount === 0) {
+            container.innerHTML = `
+                <div class="p-12 text-center bg-white border border-slate-100 rounded-3xl space-y-3 flex flex-col items-center justify-center">
+                    <div class="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Todo en Orden</h4>
+                        <p class="text-xs text-slate-400 mt-1 max-w-sm">No existen deudas de plazos vencidos ni alertas preventivas activas en este momento.</p>
+                    </div>
+                </div>
+            `;
+        }
     }
 
-    function updateAlertCount() {}
+    function updateAlertCount() {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        let alertCount = 0;
+
+        reservations.forEach(res => {
+            if (res.status === 'Al Corriente') return;
+            const resDate = new Date(res.fecha);
+            resDate.setHours(0,0,0,0);
+            const diffDays = Math.ceil((resDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0 || (diffDays >= 0 && diffDays <= 2)) {
+                alertCount++;
+            }
+        });
+
+        const badge = document.getElementById('alert-badge');
+        const mobileBadge = document.getElementById('mobile-alert-badge');
+        
+        if (alertCount > 0) {
+            badge.innerText = alertCount;
+            badge.classList.remove('hidden');
+            
+            mobileBadge.innerText = alertCount;
+            mobileBadge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+            mobileBadge.classList.add('hidden');
+        }
+    }
 </script>
 </body>
 </html>
