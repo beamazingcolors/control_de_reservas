@@ -1193,15 +1193,15 @@
             });
 
             if (pushRes.status === 200 || pushRes.status === 201) {
-                updateGitHubIndicator(true);
+                updateGitHubIndicator('verified');
                 if (!silent) showToast("¡Sincronizado!", "Tus datos se guardaron con éxito en tu repositorio de GitHub.", "success");
             } else {
-                updateGitHubIndicator(false);
+                updateGitHubIndicator('error');
                 if (!silent) showToast("Error de Sincronización", "GitHub rechazó la actualización del archivo.", "error");
             }
         } catch (error) {
             console.error(error);
-            updateGitHubIndicator(false);
+            updateGitHubIndicator('error');
             if (!silent) showToast("Fallo de Conexión", "No se pudo comunicar con GitHub. Revisa tu Token de acceso.", "error");
         }
     }
@@ -1220,12 +1220,13 @@
                 reservations = fileInfo.content;
                 localStorage.setItem('local_reservations', JSON.stringify(reservations));
                 renderDashboard();
-                updateGitHubIndicator(true);
+                updateGitHubIndicator('verified');
                 showToast("Importado con Éxito", `Se cargaron ${reservations.length} reservas directamente desde tu nube de GitHub.`, "success");
             } else {
                 showToast("Archivo Vacío", "No se encontraron reservas en la ruta del repositorio. Se creará de cero al subir.", "info");
             }
         } catch (e) {
+            updateGitHubIndicator('error');
             showToast("Error de Importación", "No pudimos descargar el archivo reservas.json.", "error");
         }
     }
@@ -1291,7 +1292,7 @@
     window.onload = function() {
         populateCheckInDropdown();
         
-        // Cargar variables GitHub
+        // Cargar variables GitHub de localStorage de manera directa
         document.getElementById('github-token-input').value = githubToken;
         document.getElementById('github-user-input').value = githubUser;
         document.getElementById('github-repo-input').value = githubRepo;
@@ -1299,7 +1300,13 @@
         document.getElementById('github-branch-input').value = githubBranch;
         document.getElementById('github-autosync-input').checked = autoSync;
 
-        updateGitHubIndicator(githubToken !== '');
+        // ¡SOPORTE PARA AUTO-DETECTAR AUTOCOMPLETADOS U HOJAS PRE-GUARDADAS LIVE!
+        const currentToken = document.getElementById('github-token-input').value.trim();
+        if (currentToken) {
+            updateGitHubIndicator('saved');
+        } else {
+            updateGitHubIndicator('disconnected');
+        }
 
         window.addEventListener('resize', () => {
             if (financialChartInstance) financialChartInstance.resize();
@@ -1307,6 +1314,53 @@
         });
         calculateDifference();
         updateAlertCount();
+    }
+
+    function saveGitHubConfig() {
+        githubToken = document.getElementById('github-token-input').value.trim();
+        githubUser = document.getElementById('github-user-input').value.trim();
+        githubRepo = document.getElementById('github-repo-input').value.trim();
+        githubPath = document.getElementById('github-path-input').value.trim() || 'reservas.json';
+        githubBranch = document.getElementById('github-branch-input').value.trim() || 'main';
+        autoSync = document.getElementById('github-autosync-input').checked;
+
+        localStorage.setItem('github_token', githubToken);
+        localStorage.setItem('github_user', githubUser);
+        localStorage.setItem('github_repo', githubRepo);
+        localStorage.setItem('github_path', githubPath);
+        localStorage.setItem('github_branch', githubBranch);
+        localStorage.setItem('github_autosync', autoSync);
+
+        if (githubToken) {
+            updateGitHubIndicator('saved');
+            showToast("Configuración Guardada", "Tus credenciales de GitHub se han guardado con éxito. Presiona 'Probar Conexión' para validar.", "success");
+        } else {
+            updateGitHubIndicator('disconnected');
+            showToast("Credenciales Limpias", "Se han desvinculado los datos de tu cuenta.", "info");
+        }
+    }
+
+    function updateGitHubIndicator(state) {
+        const indicator = document.getElementById('github-indicator');
+        const indicatorText = document.getElementById('github-indicator-text');
+        
+        if (state === 'verified') {
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse";
+            indicatorText.innerText = "GitHub: Verificado y Activo";
+            indicatorText.className = "text-[11px] text-emerald-600 font-semibold";
+        } else if (state === 'saved') {
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-indigo-500";
+            indicatorText.innerText = "GitHub: Guardado (Probar conexión)";
+            indicatorText.className = "text-[11px] text-indigo-600 font-semibold";
+        } else if (state === 'error') {
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-rose-500";
+            indicatorText.innerText = "GitHub: Error de Conexión";
+            indicatorText.className = "text-[11px] text-rose-600 font-semibold";
+        } else { // 'disconnected'
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-amber-400";
+            indicatorText.innerText = "GitHub: Desconectado";
+            indicatorText.className = "text-[11px] text-slate-500 font-medium";
+        }
     }
 </script>
 
@@ -1389,7 +1443,7 @@
                         <button onclick="deleteReservation('${res.id}')" class="text-rose-600 font-bold hover:underline text-[10px] uppercase">Borrar</button>
                         <span class="text-slate-300 hidden md:inline">|</span>
                         <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5 text-[10px] uppercase">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             Copiar
                         </button>
                     </div>
@@ -1627,7 +1681,7 @@
             if (alertType) {
                 const borderClass = alertType === 'critical' ? 'border-l-4 border-l-rose-500 border-rose-100' : 'border-l-4 border-l-amber-500 border-amber-100';
                 const bgClass = alertType === 'critical' ? 'bg-rose-50/25' : 'bg-amber-50/25';
-                const tag = alertType === 'critical' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-amber-50 text-amber-700 border border-amber-100';
+                const tag = alertType === 'critical' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-amber-50 text-amber-700 border-amber-100';
 
                 const alertCard = document.createElement('div');
                 alertCard.className = `p-5 bg-white border ${borderClass} ${bgClass} rounded-2xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4`;
