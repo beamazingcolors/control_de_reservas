@@ -842,14 +842,12 @@ function handleRequest(e) {
       data.status || ""
     ]);
     
-    // Respuesta de confirmación exitosa con CORS habilitado
+    // Respuesta de confirmación exitosa con CORS habilitado de forma nativa por Google
     return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados"}))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*");
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*");
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
                     </pre>
