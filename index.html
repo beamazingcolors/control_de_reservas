@@ -218,7 +218,7 @@
             <span id="alert-badge" class="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
         </button>
         <button onclick="switchTab('sheets-config')" id="btn-sheets-config" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-950">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31(2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
             Configuración Sheets
         </button>
     </nav>
@@ -669,11 +669,11 @@
         <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-r-xl text-xs space-y-1">
             <h4 class="font-bold flex items-center gap-1.5 text-emerald-950">
                 <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                🚀 ¡VINCULACIÓN POR MÉTODO "GET" INDESTRUCTIBLE ACTIVADA!
+                🚀 ¡VINCULACIÓN POR MÉTODO JSON INDESTRUCTIBLE ACTIVADA!
             </h4>
             <p class="leading-relaxed">
-                Hemos activado un método de envío asíncrono súper seguro que no puede ser bloqueado por CORS ni iFrames. 
-                Si aun así deseas un respaldo físico inmediato, verás un botón de <strong>"Copiar Fila"</strong> en el Dashboard y detalles de la reserva. Al hacer clic, puedes ir a tu hoja y presionar <strong>Ctrl + V</strong> para rellenar todas las columnas perfectamente.
+                Hemos activado un método de envío asíncrono premium que no puede ser bloqueado por CORS ni iFrames y que transfiere un bloque JSON robusto y estructurado.
+                Si aun así deseas un respaldo físico inmediato, verás un botón de <strong>"Copiar"</strong> en el Dashboard y detalles de la reserva. Al hacer clic, puedes ir a tu hoja y presionar <strong>Ctrl + V</strong> para rellenar todas las columnas perfectamente.
             </p>
         </div>
 
@@ -703,7 +703,7 @@
                             Guardar Dirección Web
                         </button>
                         <button onclick="testSheetsConnection()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all">
-                            Probar Envío (GET)
+                            Probar Envío (JSON POST)
                         </button>
                     </div>
                 </div>
@@ -740,8 +740,41 @@ function handleRequest(e) {
     var ss = SpreadsheetApp.openById(spreadsheetId);
     var sheet = ss.getSheets()[0]; 
     
-    // Captura directa usando e.parameter (Segura para URL GET asíncrona)
-    var p = e.parameter;
+    var data = {};
+    
+    // CASO 1: Parámetros GET/POST decodificados nativamente por Google
+    if (e && e.parameter) {
+      for (var key in e.parameter) {
+        data[key] = e.parameter[key];
+      }
+    }
+    
+    // CASO 2: Cuerpo estructurado POST (JSON o URL-encoded crudo)
+    if (e && e.postData && e.postData.contents) {
+      var contents = e.postData.contents;
+      try {
+        var json = JSON.parse(contents);
+        for (var key in json) {
+          data[key] = json[key];
+        }
+      } catch (jsonErr) {
+        var pairs = contents.split('&');
+        for (var i = 0; i < pairs.length; i++) {
+          var pair = pairs[i].split('=');
+          if (pair.length == 2) {
+            var k = decodeURIComponent(pair[0].replace(/\+/g, ' '));
+            var v = decodeURIComponent(pair[1].replace(/\+/g, ' '));
+            data[k] = v;
+          }
+        }
+      }
+    }
+    
+    // Protección contra inserciones vacías accidentales
+    if (Object.keys(data).length === 0) {
+      return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": "Petición vacía"}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
@@ -753,25 +786,25 @@ function handleRequest(e) {
     }
     
     sheet.appendRow([
-      p.fechaRegistro || new Date().toLocaleString("es-MX"),
-      p.nombre || "",
-      p.tour || "",
-      p.provedor || "",
-      p.fecha || "",
-      Number(p.pax) || 0,
-      p.checkIn || "",
-      p.checkPoint || "",
-      p.confirmacion || "",
-      p.vendedor || "",
-      p.moneda || "",
-      Number(p.tipoCambio) || 1.00,
-      Number(p.balance) || 0,
-      Number(p.balanceMxn) || 0,
-      Number(p.reporte) || 0,
-      Number(p.diferencia) || 0,
-      p.quienDebe || "",
-      Number(p.cuantoDebe) || 0,
-      p.status || ""
+      data.fechaRegistro || new Date().toLocaleString("es-MX"),
+      data.nombre || "",
+      data.tour || "",
+      data.provedor || "",
+      data.fecha || "",
+      Number(data.pax) || 0,
+      data.checkIn || "",
+      data.checkPoint || "",
+      data.confirmacion || "",
+      data.vendedor || "",
+      data.moneda || "",
+      Number(data.tipoCambio) || 1.00,
+      Number(data.balance) || 0,
+      Number(data.balanceMxn) || 0,
+      Number(data.reporte) || 0,
+      Number(data.diferencia) || 0,
+      data.quienDebe || "",
+      Number(data.cuantoDebe) || 0,
+      data.status || ""
     ]);
     
     return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados"}))
@@ -1034,23 +1067,21 @@ function handleRequest(e) {
         }
     }
 
-    // ALTERNATIVA INDESTRUCTIBLE: Envío mediante Query-GET (Evita el bloqueo de iFrame y CORS de cuerpos POST)
+    // ALTERNATIVA INDESTRUCTIBLE POST JSON PLANA (Evita el bloqueo de iFrame y CORS de cuerpos url-encoded)
     async function sendToGoogleSheets(data) {
         if (!googleSheetsUrl) return false;
         try {
-            const queryParams = new URLSearchParams();
-            for (const key in data) {
-                queryParams.append(key, data[key]);
-            }
-            const urlWithParams = `${googleSheetsUrl}?${queryParams.toString()}`;
-            
-            await fetch(urlWithParams, {
-                method: 'GET',
-                mode: 'no-cors'
+            await fetch(googleSheetsUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                body: JSON.stringify(data)
             });
             return true;
         } catch (error) {
-            console.error("Error submitting to Sheets via GET:", error);
+            console.error("Error submitting to Sheets:", error);
             return false;
         }
     }
@@ -1306,7 +1337,7 @@ function handleRequest(e) {
                     <span class="text-[10px] text-rose-600 font-bold">Debe: $${res.cuantoDebe.toFixed(2)} a ${res.quienDebe}</span>
                 </div>
                 <button onclick="copyRowForSheet('${res.id}')" class="px-2.5 py-1.5 bg-slate-50 border hover:bg-slate-100 rounded-lg text-indigo-600 text-[10px] font-bold flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                     Copiar
                 </button>
             `;
