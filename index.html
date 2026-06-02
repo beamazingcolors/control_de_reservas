@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Martin Garzón - Gestión de Reservas & Finanzas</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for beautiful dashboards -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -46,10 +49,10 @@
             vendedor: "Carlos Ruiz",
             moneda: "USD",
             tipoCambio: 18.50,
-            balance: 150.00,
-            balanceMxn: 2775.00,
-            reporte: 2500.00,
-            diferencia: 275.00,
+            balance: 150.00, // En la moneda seleccionada
+            balanceMxn: 2775.00, // Convertido a MXN
+            reporte: 2500.00, // Siempre en MXN
+            diferencia: 275.00, // balanceMxn - reporte
             cuantoDebe: 275.00,
             quienDebe: "Vendedor",
             status: "Pendiente",
@@ -60,7 +63,7 @@
             nombre: "John Doe",
             tour: "Snorkel en Cozumel Todo Incluido",
             provedor: "Aqua Adventures",
-            fecha: "2026-05-28",
+            fecha: "2026-05-28", // Pasado para alerta
             pax: 2,
             checkIn: "09:00",
             checkPoint: "Marina Fonatur",
@@ -101,17 +104,20 @@
         }
     ];
 
-    // Config default Google Sheets Web App URL
+    // Config default Google Sheets Web App URL - Pre-populated with your live URL
     const defaultSheetsUrl = "https://script.google.com/macros/s/AKfycbwDkM6CRYnS4kTws6h2ZTsJO9792BVffKzk6DVhFiyCFXDKyQsyh85e-RUsloqMXuv5/exec";
     let googleSheetsUrl = localStorage.getItem('googleSheetsUrl') || defaultSheetsUrl;
     
+    // Target Google Sheet View URL provided by user
     const targetGoogleSheetViewUrl = "https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing";
 
+    // Active Tab & Form State
     let activeTab = 'nueva-reserva';
     let selectedCurrency = 'MXN';
-    let selectedExchangeRate = 18.50;
+    let selectedExchangeRate = 18.50; // default initial exchange rate
 </script>
 
+<!-- Mobile Top Navigation Header -->
 <header class="md:hidden w-full bg-white border-b border-slate-200 px-5 py-4 flex items-center justify-between z-30 shrink-0">
     <div class="flex items-center gap-3">
         <div class="h-10 w-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200">
@@ -127,6 +133,7 @@
     </button>
 </header>
 
+<!-- Mobile Navigation Drawer -->
 <div id="mobile-drawer" class="fixed inset-0 z-40 transform -translate-x-full transition-transform duration-300 md:hidden flex">
     <div class="w-64 bg-white h-full shadow-2xl border-r border-slate-200 flex flex-col p-5">
         <div class="flex items-center justify-between pb-6 border-b border-slate-100">
@@ -142,7 +149,7 @@
         </div>
         
         <nav class="flex-1 py-6 space-y-1.5">
-            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700">
+            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700 font-bold">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Nueva Reserva
             </button>
@@ -176,6 +183,7 @@
     <div onclick="toggleMobileMenu()" class="flex-1 bg-slate-900/40 backdrop-blur-sm"></div>
 </div>
 
+<!-- Desktop Sidebar -->
 <aside class="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0">
     <div class="p-6 border-b border-slate-100">
         <div class="flex items-center gap-3">
@@ -227,6 +235,7 @@
     </div>
 </aside>
 
+<!-- Main Application Container -->
 <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
     <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 max-w-sm w-full bg-white shadow-2xl border border-slate-100 rounded-2xl p-4 flex items-start gap-3">
         <div id="toast-icon-wrapper" class="p-2 rounded-xl"></div>
@@ -239,6 +248,7 @@
         </button>
     </div>
 
+    <!-- TAB 1: NUEVA RESERVA FORM -->
     <section id="tab-nueva-reserva" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/50">
             <div>
@@ -417,6 +427,7 @@
         </form>
     </section>
 
+    <!-- TAB 2: DASHBOARD VIEW -->
     <section id="tab-dashboard" class="space-y-6 hidden">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/50">
             <div>
@@ -552,6 +563,7 @@
         </div>
     </section>
 
+    <!-- TAB 3: CONTROL DE PAGOS & LIQUIDACION -->
     <section id="tab-control-pagos" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Liquidación, Conciliaciones & Saldos</h2>
@@ -617,10 +629,11 @@
         </div>
     </section>
 
+    <!-- TAB 4: ALERTAS Y VENCIMIENTOS -->
     <section id="tab-alertas" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Alertas Críticas de Cobros Pendientes</h2>
-            <p class="text-xs text-slate-500">Alertas tempranas para servicios próximos a ejecutarse y cuentas vencidas que no registran estatus al corriente.</p>
+            <p class="text-xs text-slate-500 font-normal">Alertas tempranas para servicios próximos a ejecutarse y cuentas vencidas que no registran estatus al corriente.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -646,10 +659,11 @@
         </div>
     </section>
 
+    <!-- TAB 5: GOOGLE SHEETS CONFIG -->
     <section id="tab-sheets-config" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Vincular con tu Google Sheet Autorizado</h2>
-            <p class="text-xs text-slate-500">Integra el formulario directamente con tu hoja de cálculo dedicada por medio de un script en Google Apps Script.</p>
+            <p class="text-xs text-slate-500 font-normal">Integra el formulario directamente con tu hoja de cálculo dedicada por medio de un script en Google Apps Script.</p>
         </div>
 
         <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 rounded-r-xl text-xs space-y-1">
@@ -677,7 +691,7 @@
                     <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Google Sheet Destinatario (Autorizado)</span>
                     <a id="target-sheet-href" href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="text-xs text-emerald-600 font-bold hover:underline break-all block flex items-center gap-1">
                         https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
                 </div>
 
