@@ -195,7 +195,7 @@
     </div>
     
     <nav class="flex-1 p-4 space-y-1">
-        <button onclick="switchTab('nueva-reserva')" id="btn-nueva-reserva" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700">
+        <button onclick="switchTab('nueva-reserva')" id="btn-nueva-reserva" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700 font-bold shadow-xs">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Nueva Reserva
         </button>
@@ -406,7 +406,7 @@
                         <!-- Dynamic Resumen Deuda Panel (Notas) -->
                         <div id="nota-deuda-panel" class="p-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl space-y-1">
                             <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Notas de Resumen</span>
-                            <p id="nota-deuda-text" class="text-xs text-slate-600 leading-relaxed font-semibold">El balance y el reporte coinciden. No hay diferencias de cobro.</p>
+                            <p id="nota-deuda-text" class="text-xs text-slate-600 leading-relaxed font-semibold">El balance y el reporte coinciden. No hay deudas pendientes.</p>
                         </div>
                     </div>
                 </div>
@@ -704,17 +704,15 @@
             <p class="text-xs text-slate-500">Integra el formulario directamente con tu hoja de cálculo dedicada por medio de un script en Google Apps Script.</p>
         </div>
 
-        <!-- Alert box about common URL mistake -->
-        <div class="p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-800 rounded-r-xl text-xs space-y-1">
-            <h4 class="font-bold flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                ¡ALERTA DE CONEXIÓN IMPORTANTÍSIMA!
+        <!-- Educational guide box instead of "scary warning" -->
+        <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 rounded-r-xl text-xs space-y-1">
+            <h4 class="font-bold flex items-center gap-1.5 text-blue-900">
+                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                💡 Nota Informativa de Configuración
             </h4>
             <p class="leading-relaxed">
-                El error número uno por el cual los datos <strong>no se ven reflejados</strong> en la hoja de cálculo de Google es pegar la dirección del navegador de Google Sheets 
-                <span class="font-mono font-bold text-amber-900">https://docs.google.com/spreadsheets/d/...</span> en el campo <strong>Web App URL</strong>. 
-                <br>Lo que debes pegar en el formulario de abajo es la dirección del <strong>Servicio Web App</strong> generado tras presionar "Nueva Implementación" en Apps Script (que inicia con 
-                <span class="font-mono font-bold text-amber-900">https://script.google.com/macros/s/...</span>). Por favor sigue detenidamente los pasos indicados a la derecha.
+                Este recuadro azul es una <strong>guía de ayuda permanente</strong> para asegurar que tu conexión sea exitosa. 
+                Para que los datos se guarden, asegúrate de que estás utilizando la URL de la <strong>Aplicación Web de Apps Script</strong> (que termina en <span class="font-mono font-bold text-blue-950">/exec</span>) y no la URL directa del navegador de tu hoja de cálculo.
             </p>
         </div>
 
@@ -761,7 +759,7 @@
                     <li>Dentro de tu hoja de cálculo, ve al menú superior y selecciona <strong>Extensiones > Apps Script</strong>.</li>
                     <li>Sustituye todo el código por el bloque de abajo y presiona Guardar.</li>
                     <li>Haz clic en <strong>Implementar > Nueva implementación</strong> (esquina superior derecha).</li>
-                    <li>Selecciona el tipo <strong>Aplicación Web</strong>. Configura "Ejecutar como: Tú" y "Quién tiene acceso: <strong>Cualquiera</strong>" (Anyonene).</li>
+                    <li>Selecciona el tipo <strong>Aplicación Web</strong>. Configura "Ejecutar como: Tú" y "Quién tiene acceso: <strong>Cualquiera</strong>" (Anyone).</li>
                     <li>Haz clic en Implementar, copia la URL de la aplicación web (la cual inicia con <span class="font-bold text-slate-700">https://script.google.com/macros/s/...</span>) y pégala a la izquierda.</li>
                 </ol>
 
@@ -773,7 +771,9 @@
                     <pre id="apps-script-code" class="bg-slate-50 border border-slate-100 p-3 rounded-lg text-[10px] text-slate-600 overflow-x-auto max-h-48 font-mono">
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    // Abrimos explícitamente tu hoja de cálculo mediante su ID seguro
+    var spreadsheetId = "1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU";
+    var sheet = SpreadsheetApp.openById(spreadsheetId).getActiveSheet();
     
     // Lectura robusta de payloads en formato JSON o URL-encoded (no-cors)
     var data;
