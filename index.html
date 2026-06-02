@@ -36,7 +36,7 @@
 <body class="h-full text-slate-800 antialiased flex flex-col md:flex-row overflow-hidden">
 
 <script>
-    // App State
+    // App State - Inicializado con ejemplos interactivos
     let reservations = [
         {
             id: "1780361683881",
@@ -106,17 +106,28 @@
         }
     ];
 
-    // Config default Google Sheets Web App URL
-    const defaultSheetsUrl = "https://script.google.com/macros/s/AKfycbwDkM6CRYnS4kTws6h2ZTsJO9792BVffKzk6DVhFiyCFXDKyQsyh85e-RUsloqMXuv5/exec";
-    let googleSheetsUrl = localStorage.getItem('googleSheetsUrl') || defaultSheetsUrl;
-    
-    // Target Google Sheet View URL provided by user
-    const targetGoogleSheetViewUrl = "https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing";
+    // Cargar de localStorage si ya existen guardadas localmente
+    const localReservations = localStorage.getItem('local_reservations');
+    if (localReservations) {
+        try {
+            reservations = JSON.parse(localReservations);
+        } catch(e) {
+            console.error("Error cargando caché local", e);
+        }
+    }
+
+    // Configuración de GitHub (Se guarda de forma súper segura en el localStorage de tu navegador)
+    let githubToken = localStorage.getItem('github_token') || '';
+    let githubUser = localStorage.getItem('github_user') || '';
+    let githubRepo = localStorage.getItem('github_repo') || '';
+    let githubPath = localStorage.getItem('github_path') || 'reservas.json';
+    let githubBranch = localStorage.getItem('github_branch') || 'main';
+    let autoSync = localStorage.getItem('github_autosync') !== 'false'; // por defecto verdadero
 
     // Active Tab & Form State
     let activeTab = 'nueva-reserva';
     let selectedCurrency = 'MXN';
-    let selectedExchangeRate = 18.50; // default initial exchange rate
+    let selectedExchangeRate = 18.50; // Tipo de cambio inicial por defecto
 </script>
 
 <!-- Mobile Top Navigation Header -->
@@ -151,7 +162,7 @@
         </div>
         
         <nav class="flex-1 py-6 space-y-1.5">
-            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700 font-bold">
+            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Nueva Reserva
             </button>
@@ -171,15 +182,15 @@
                 <span id="mobile-alert-badge" class="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
             </button>
             <button onclick="switchTab('sheets-config'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
-                Configuración Sheets
+                <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                Configuración GitHub
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-xl">
-            <a href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="text-[10px] font-bold text-emerald-600 hover:underline flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 18H14v-2h1.8v2zm0-3H14v-2h1.8v2zm0-3H14v-2h1.8v2zm-3.3 6H7v-2h3.5v2zm0-3H7v-2h3.5v2zm0-3H7v-2h3.5v2zm4-5V3.5L18.5 9H14.5z"/></svg>
-                Ver Google Sheet
-            </a>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-xl space-y-2">
+            <button onclick="downloadExcelFile()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Bajar Excel
+            </button>
         </div>
     </div>
     <div onclick="toggleMobileMenu()" class="flex-1 bg-slate-900/40 backdrop-blur-sm"></div>
@@ -194,7 +205,7 @@
             </div>
             <div>
                 <h1 class="font-extrabold text-slate-900 text-sm leading-tight tracking-tight">Martin Garzón</h1>
-                <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Control Financiero</p>
+                <p class="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Control Financiero</p>
             </div>
         </div>
     </div>
@@ -220,46 +231,37 @@
             <span id="alert-badge" class="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
         </button>
         <button onclick="switchTab('sheets-config')" id="btn-sheets-config" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50 hover:text-slate-950">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31(2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
-            Configuración Sheets
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+            Configuración GitHub
         </button>
     </nav>
 
+    <!-- Sidebar Footer -->
     <div class="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
         <div class="flex items-center gap-2">
-            <span id="sheets-indicator" class="h-2 w-2 rounded-full bg-amber-400"></span>
-            <span id="sheets-indicator-text" class="text-[11px] text-slate-500 font-medium">Modo Local (Sin sincronizar)</span>
+            <span id="github-indicator" class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+            <span id="github-indicator-text" class="text-[11px] text-slate-500 font-medium">GitHub: Desconectado</span>
         </div>
-        <a href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="text-[10px] font-bold text-emerald-600 hover:underline flex items-center gap-1.5 pt-1 border-t border-slate-100/60">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 18H14v-2h1.8v2zm0-3H14v-2h1.8v2zm0-3H14v-2h1.8v2zm-3.3 6H7v-2h3.5v2zm0-3H7v-2h3.5v2zm0-3H7v-2h3.5v2zm4-5V3.5L18.5 9H14.5z"/></svg>
-            Ver Google Sheet
-        </a>
+        <button onclick="downloadExcelFile()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Bajar Excel (.xlsx)
+        </button>
     </div>
 </aside>
 
 <!-- Main Application Container -->
 <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
-    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 max-w-sm w-full bg-white shadow-2xl border border-slate-100 rounded-2xl p-4 flex items-start gap-3">
-        <div id="toast-icon-wrapper" class="p-2 rounded-xl"></div>
-        <div class="flex-1">
-            <h4 id="toast-title" class="font-bold text-slate-900 text-xs"></h4>
-            <p id="toast-desc" class="text-[11px] text-slate-500 mt-0.5"></p>
-        </div>
-        <button onclick="hideToast()" class="text-slate-400 hover:text-slate-600 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-    </div>
 
     <!-- TAB 1: NUEVA RESERVA FORM -->
     <section id="tab-nueva-reserva" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/50">
             <div>
                 <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Registro de Reserva Inteligente</h2>
-                <p class="text-xs text-slate-500">Automatización financiera con soporte de mapeo dinámico directo a tu hoja.</p>
+                <p class="text-xs text-slate-500">Automatización financiera con guardado directo en GitHub y soporte local instantáneo.</p>
             </div>
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-[11px] font-semibold text-slate-600">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sistema Listo
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sistema Operativo
                 </span>
             </div>
         </div>
@@ -267,47 +269,47 @@
         <form id="reservation-form" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6 bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-sm">
                 <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <span class="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                    <span class="w-1.5 h-3.5 bg-indigo-500 rounded-full"></span>
                     Campos de Datos de Reserva
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre del Cliente</label>
-                        <input required type="text" id="nombre" name="nombre" placeholder="Ej. Juan Pérez" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="nombre" name="nombre" placeholder="Ej. Juan Pérez" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tour contratado</label>
-                        <input required type="text" id="tour" name="tour" placeholder="Ej. Isla Mujeres Catamarán" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="tour" name="tour" placeholder="Ej. Isla Mujeres Catamarán" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Proveedor</label>
-                        <input required type="text" id="provedor" name="provedor" placeholder="Ej. Ultimate Yachts" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="provedor" name="provedor" placeholder="Ej. Ultimate Yachts" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha del Servicio</label>
-                        <input required type="date" id="fecha" name="fecha" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="date" id="fecha" name="fecha" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pasajeros (Pax)</label>
-                        <input required type="number" id="pax" name="pax" min="1" value="1" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="number" id="pax" name="pax" min="1" value="1" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Check-in (Formato 24h)</label>
-                        <select required id="checkIn" name="checkIn" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <select required id="checkIn" name="checkIn" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                         </select>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Check-point (Lugar de encuentro)</label>
-                        <input required type="text" id="checkPoint" name="checkPoint" placeholder="Ej. Muelle de Playa Tortugas" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="checkPoint" name="checkPoint" placeholder="Ej. Muelle de Playa Tortugas" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Código de Confirmación</label>
-                        <input required type="text" id="confirmacion" name="confirmacion" placeholder="Ej. CONF-55902" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="confirmacion" name="confirmacion" placeholder="Ej. CONF-55902" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre de Vendedor</label>
-                        <input required type="text" id="vendedor" name="vendedor" placeholder="Ej. Carlos Ruiz" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
+                        <input required type="text" id="vendedor" name="vendedor" placeholder="Ej. Carlos Ruiz" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs">
                     </div>
                 </div>
             </div>
@@ -315,7 +317,7 @@
             <div class="space-y-6">
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
                     <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                        <span class="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                        <span class="w-1.5 h-3.5 bg-indigo-500 rounded-full"></span>
                         Cálculos & Tipo de Cambio
                     </h3>
                     
@@ -333,7 +335,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span id="currency-symbol" class="text-slate-400 text-xs font-bold">$</span>
                                 </div>
-                                <input required type="number" id="balance" name="balance" min="0" value="0" step="0.01" oninput="calculateDifference()" class="w-full pl-7 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs font-bold">
+                                <input required type="number" id="balance" name="balance" min="0" value="0" step="0.01" oninput="calculateDifference()" class="w-full pl-7 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-bold">
                                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <span id="currency-suffix" class="text-slate-400 text-[10px] font-extrabold uppercase">USD</span>
                                 </div>
@@ -342,7 +344,7 @@
 
                         <div id="exchange-rate-section" class="space-y-2.5 hidden">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipo de Cambio (USD ➜ MXN)</label>
-                            <select id="exchange-rate-select" onchange="onExchangeDropdownChange()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all">
+                            <select id="exchange-rate-select" onchange="onExchangeDropdownChange()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 transition-all">
                                 <option value="15.00">15.00 MXN</option>
                                 <option value="15.50">15.50 MXN</option>
                                 <option value="16.00">16.00 MXN</option>
@@ -365,7 +367,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-slate-400 text-[10px] font-bold">T.C.:</span>
                                 </div>
-                                <input type="number" id="custom-exchange-rate" step="0.01" value="18.50" oninput="onCustomExchangeRateChange()" class="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:border-emerald-500">
+                                <input type="number" id="custom-exchange-rate" step="0.01" value="18.50" oninput="onCustomExchangeRateChange()" class="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:border-indigo-500">
                             </div>
                         </div>
 
@@ -375,7 +377,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-slate-400 text-xs font-bold">$</span>
                                 </div>
-                                <input required type="number" id="reporte" name="reporte" min="0" value="0" step="0.01" oninput="calculateDifference()" class="w-full pl-7 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs font-bold">
+                                <input required type="number" id="reporte" name="reporte" min="0" value="0" step="0.01" oninput="calculateDifference()" class="w-full pl-7 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-bold">
                                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <span class="text-slate-400 text-[10px] font-extrabold uppercase">MXN</span>
                                 </div>
@@ -423,7 +425,7 @@
 
                 <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white rounded-2xl font-bold text-xs tracking-wider uppercase shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition-colors focus:ring-4 focus:ring-emerald-500/20 active:scale-[0.98] transform flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    Registrar y Enviar Reserva
+                    Registrar Reserva
                 </button>
             </div>
         </form>
@@ -437,10 +439,6 @@
                 <p class="text-xs text-slate-500">Métricas analíticas consolidadas de cobros, diferencias y saldos de vendedores y proveedores.</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-                <a href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 font-semibold text-xs rounded-xl flex items-center gap-1.5 hover:bg-emerald-100 transition-all shadow-xs">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 18H14v-2h1.8v2zm0-3H14v-2h1.8v2zm0-3H14v-2h1.8v2zm-3.3 6H7v-2h3.5v2zm0-3H7v-2h3.5v2zm0-3H7v-2h3.5v2zm4-5V3.5L18.5 9H14.5z"/></svg>
-                    Abrir Google Sheet
-                </a>
                 <button onclick="downloadExcelFile()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Bajar Excel (XLSX)
@@ -481,7 +479,7 @@
 
             <div class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                 <div class="h-11 w-11 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667(1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                 </div>
                 <div>
                     <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Monto Pendiente Global</span>
@@ -555,7 +553,7 @@
                             <th class="px-5 py-3 text-right">Diferencia</th>
                             <th class="px-5 py-3">Pendiente</th>
                             <th class="px-5 py-3">Estatus</th>
-                            <th class="px-5 py-3 text-center">Gestión / Copiar</th>
+                            <th class="px-5 py-3 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="reservations-table-body" class="divide-y divide-slate-100 text-[11px] text-slate-600">
@@ -661,197 +659,91 @@
         </div>
     </section>
 
-    <!-- TAB 5: GOOGLE SHEETS CONFIG -->
+    <!-- TAB 5: GITHUB CONFIG -->
     <section id="tab-sheets-config" class="space-y-6 hidden">
         <div>
-            <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Vincular con tu Google Sheet Autorizado</h2>
-            <p class="text-xs text-slate-500 font-normal">Integra el formulario directamente con tu hoja de cálculo dedicada por medio de un script en Google Apps Script.</p>
+            <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Sincronización en la Nube con GitHub</h2>
+            <p class="text-xs text-slate-500 font-normal">Olvídate de Google Sheets. Guarda tus reservas directamente en tu repositorio seguro de GitHub como un archivo JSON dinámico.</p>
         </div>
 
-        <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-850 rounded-r-xl text-xs space-y-1.5">
-            <h4 class="font-bold flex items-center gap-1.5 text-emerald-950">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                🚀 ¡VINCULACIÓN AUTODIDACTA INTELIGENTE ACTIVADA!
+        <div class="p-4 bg-indigo-50 border-l-4 border-indigo-600 text-indigo-850 rounded-r-xl text-xs space-y-1.5">
+            <h4 class="font-bold flex items-center gap-1.5 text-indigo-950">
+                <svg class="w-4.5 h-4.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                💡 ¿Por qué GitHub es mejor y 100% confiable?
             </h4>
             <p class="leading-relaxed">
-                Este nuevo sistema utiliza **Mapeo Dinámico**. El script lee automáticamente tu primera fila de Google Sheet y coloca los datos según los nombres de tus columnas (ID, Cliente, Tour, Vendedor, etc.). No importa si tienes un orden diferente al inicial, ¡los datos caerán en la columna perfecta!
+                Google Sheets suele dar problemas de conexión debido a restricciones del navegador y de CORS. Al enlazar un archivo `.json` de GitHub, tu información se almacena con alta seguridad, en tiempo real, con historial de cambios, y sin cortes de red.
             </p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-sm space-y-5">
                 <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2 uppercase tracking-wider">
-                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                    URL de Implementación Apps Script
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                    Credenciales de tu Repositorio
                 </h3>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    Sincroniza y vacía toda la información recopilada de cada reserva directamente en tu hoja de cálculo dedicada:
-                </p>
 
-                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Google Sheet Destinatario (Autorizado)</span>
-                    <a id="target-sheet-href" href="https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing" target="_blank" class="text-xs text-emerald-600 font-bold hover:underline break-all block flex items-center gap-1">
-                        https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                    </a>
-                </div>
+                <div class="space-y-3.5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">GitHub Personal Access Token (PAT)</label>
+                        <input type="password" id="github-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs font-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Usuario de GitHub</label>
+                            <input type="text" id="github-user-input" placeholder="Ej. MartinGarzon" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nombre de Repositorio</label>
+                            <input type="text" id="github-repo-input" placeholder="Ej. control-reservas" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ruta del Archivo (.json)</label>
+                            <input type="text" id="github-path-input" placeholder="data/reservas.json" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Rama (Branch)</label>
+                            <input type="text" id="github-branch-input" placeholder="main" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none text-xs font-mono">
+                        </div>
+                    </div>
 
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Web App URL Generada (https://script.google.com...)</label>
-                    <input type="url" id="sheets-url-input" placeholder="https://script.google.com/macros/s/..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-xs">
-                    <div class="flex gap-2">
-                        <button onclick="saveSheetsUrl()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm">
-                            Guardar Dirección Web
+                    <div class="flex items-center gap-2 py-1">
+                        <input type="checkbox" id="github-autosync-input" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <label for="github-autosync-input" class="text-xs text-slate-600 font-semibold select-none">Auto-sincronizar automáticamente al registrar</label>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="saveGitHubConfig()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm">
+                            Guardar Configuración
                         </button>
-                        <button onclick="testSheetsConnection()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all">
-                            Probar Envío de Prueba
+                        <button onclick="pullFromGitHub()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all">
+                            Importar de GitHub
+                        </button>
+                        <button onclick="pushToGitHub()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all">
+                            Subir Reservas
                         </button>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-                <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Instrucciones de Vinculación Paso a Paso</h3>
-                <ol class="space-y-3 text-xs text-slate-500 list-decimal pl-4 leading-relaxed">
-                    <li>Abre tu hoja de cálculo autorizada haciendo clic en el enlace azul a la izquierda.</li>
-                    <li>Dentro de tu hoja de cálculo, ve al menú superior y selecciona <strong>Extensiones > Apps Script</strong>.</li>
-                    <li>Sustituye todo el código por el bloque de abajo y presiona Guardar.</li>
-                    <li>Haz clic en <strong>Implementar > Nueva implementación</strong> (esquina superior derecha).</li>
-                    <li>Selecciona el tipo <strong>Aplicación Web</strong>. Configura "Ejecutar como: Tú" y "Quién tiene acceso: <strong>Cualquiera</strong>" (Anyone).</li>
-                    <li>Haz clic en Implementar, copia la URL de la aplicación web (la cual inicia con <span class="font-bold text-slate-700">https://script.google.com/macros/s/...</span>) y pégala a la izquierda.</li>
+                <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">¿Cómo obtener tus credenciales de GitHub?</h3>
+                <ol class="space-y-3.5 text-xs text-slate-500 list-decimal pl-4 leading-relaxed">
+                    <li>Entra a tu cuenta en <a href="https://github.com" target="_blank" class="text-indigo-600 hover:underline font-bold">GitHub</a> y crea un repositorio (público o privado), por ejemplo, llamado <span class="font-mono bg-slate-100 px-1 rounded font-bold text-slate-700">control-reservas</span>.</li>
+                    <li>Ve a tu **Perfil > Settings > Developer Settings > Personal Access Tokens > Tokens (classic)**.</li>
+                    <li>Genera un nuevo token con permisos mínimos de escritura en tus repositorios (marca únicamente la casilla **`repo`** o **`public_repo`** si tu repositorio es público).</li>
+                    <li>Copia el token que inicia con <span class="font-bold text-indigo-700 font-mono">ghp_...</span> y pégalo en la casilla de la izquierda.</li>
+                    <li>Define la ruta del archivo (como <span class="font-mono bg-slate-100 px-1 rounded text-slate-700 font-bold">reservas.json</span>) y presiona **Guardar**.</li>
+                    <li>¡Listo! El sistema sincronizará tu base de datos cada vez que añadas una reserva de forma invisible.</li>
                 </ol>
-
-                <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Código Apps Script Inteligente Autodidacta</span>
-                        <button onclick="copyAppsScript()" class="text-[10px] text-emerald-600 font-bold hover:text-emerald-700">Copiar Código</button>
-                    </div>
-                    <pre id="apps-script-code" class="bg-slate-50 border border-slate-100 p-3 rounded-lg text-[10px] text-slate-600 overflow-x-auto max-h-48 font-mono">
-function doGet(e) {
-  return handleRequest(e);
-}
-
-function doPost(e) {
-  return handleRequest(e);
-}
-
-function handleRequest(e) {
-  try {
-    var spreadsheetId = "1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU";
-    var ss = SpreadsheetApp.openById(spreadsheetId);
-    var sheet = ss.getSheets()[0]; 
-    
-    // Captura de datos robusta multiprotocolo
-    var p = {};
-    if (e && e.parameter) {
-      for (var key in e.parameter) {
-        p[key] = e.parameter[key];
-      }
-    }
-    
-    if (e && e.postData && e.postData.contents) {
-      try {
-        var json = JSON.parse(e.postData.contents);
-        for (var key in json) {
-          p[key] = json[key];
-        }
-      } catch (jsonErr) {
-        var parts = e.postData.contents.split('&');
-        for (var i = 0; i < parts.length; i++) {
-          var pair = parts[i].split('=');
-          if (pair.length == 2) {
-            p[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-          }
-        }
-      }
-    }
-    
-    if (Object.keys(p).length === 0) {
-      return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": "Petición vacía"}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // Lectura dinámica de la primera fila (encabezados definidos en tu sheet)
-    var lastCol = sheet.getLastColumn();
-    var headers = [];
-    if (lastCol > 0) {
-      headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    } else {
-      // Cabeceras por defecto si la hoja está completamente vacía
-      headers = [
-        "ID", "Cliente", "Tour", "Proveedor", "Fecha", "Pax", "CheckIn", "CheckPoint",
-        "Confirmacion", "Vendedor", "Moneda", "TipoCambio", "BalanceOriginal",
-        "BalanceMXN", "ReporteMXN", "DiferenciaMXN", "QuienDebe", "CuantoDebe", "Status", "FechaRegistro"
-      ];
-      sheet.appendRow(headers);
-    }
-    
-    // Diccionario de equivalencia de datos para soportar nombres y mayúsculas/minúsculas
-    var keyMap = {
-      "id": ["id", "ID"],
-      "nombre": ["Cliente", "nombre", "cliente", "Cliente & Tour"],
-      "tour": ["Tour", "tour"],
-      "provedor": ["Proveedor", "provedor", "proveedor"],
-      "fecha": ["Fecha", "fecha", "Fecha Servicio"],
-      "pax": ["Pax", "pax"],
-      "checkIn": ["CheckIn", "checkIn", "Check-in", "checkin", "CheckInHrs"],
-      "checkPoint": ["CheckPoint", "checkPoint", "Check-point", "checkpoint", "CheckPointLugar"],
-      "confirmacion": ["Confirmacion", "confirmacion", "Confirmación"],
-      "vendedor": ["Vendedor", "vendedor"],
-      "moneda": ["Moneda", "moneda"],
-      "tipoCambio": ["TipoCambio", "tipoCambio", "Tipo Cambio", "tipo_cambio"],
-      "balance": ["BalanceOriginal", "balance", "Balance Original", "BalanceOrigina"],
-      "balanceMxn": ["BalanceMXN", "balanceMxn", "Balance MXN"],
-      "reporte": ["ReporteMXN", "reporte", "Reporte MXN", "reportemxn"],
-      "diferencia": ["DiferenciaMXN", "diferencia", "Diferencia MXN", "diferenciamxn"],
-      "quienDebe": ["QuienDebe", "quienDebe", "Quien Debe", "quiendebe"],
-      "cuantoDebe": ["CuantoDebe", "cuantoDebe", "Cuanto Debe", "cuantodebe"],
-      "status": ["Status", "status", "Estatus"],
-      "fechaRegistro": ["FechaRegistro", "fechaRegistro", "Fecha Registro", "fecharegistro"]
-    };
-    
-    // Construir la nueva fila ordenada según el encabezado real de tu Google Sheet
-    var newRow = [];
-    for (var colIdx = 0; colIdx < headers.length; colIdx++) {
-      var headerName = headers[colIdx].toString().trim().replace(/[\s\-_]/g, '').toLowerCase();
-      var cellValue = "";
-      
-      for (var paramKey in keyMap) {
-        var aliases = keyMap[paramKey];
-        var matched = false;
-        for (var a = 0; a < aliases.length; a++) {
-          var cleanAlias = aliases[a].replace(/[\s\-_]/g, '').toLowerCase();
-          if (cleanAlias === headerName) {
-            matched = true;
-            break;
-          }
-        }
-        if (matched) {
-          if (p[paramKey] !== undefined) {
-            cellValue = p[paramKey];
-          }
-          break;
-        }
-      }
-      newRow.push(cellValue);
-    }
-    
-    sheet.appendRow(newRow);
-    
-    return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados en columna exacta"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-                    </pre>
-                </div>
             </div>
         </div>
     </section>
 </main>
 
+<!-- Detail Modal -->
 <div id="reservation-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
@@ -1058,7 +950,6 @@ function handleRequest(e) {
         else if (diferenciaMxn < -0.01) { calculatedStatus = 'Pendiente'; debtor = 'Proveedor'; debtAmount = Math.abs(diferenciaMxn); }
 
         const now = new Date();
-        // Formato limpio de fecha y hora mexicana para la columna FechaRegistro
         const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
 
         const newReservation = {
@@ -1085,37 +976,129 @@ function handleRequest(e) {
         };
 
         reservations.unshift(newReservation);
-        showToast("¡Reserva Registrada!", `Guardada en la memoria local.`);
+        
+        // Guardar en la caché del navegador para no perder información
+        localStorage.setItem('local_reservations', JSON.stringify(reservations));
+        showToast("¡Reserva Registrada!", `Guardada en la base de datos local de forma inmediata.`);
+        
         document.getElementById('reservation-form').reset();
         setCurrency('MXN');
         calculateDifference();
         updateAlertCount();
 
-        if (googleSheetsUrl) {
-            showToast("Sincronizando...", "Enviando fila al Google Sheet...", "info");
-            const success = await sendToGoogleSheets(newReservation);
-            if (success) showToast("Sincronización Exitosa", "¡La información se insertó en su columna exacta!", "success");
-            else showToast("Fallo de Envío", "Revisa la URL en la pestaña de Configuración.", "error");
+        // Enviar automáticamente a GitHub si está configurado
+        if (githubToken && githubUser && githubRepo && autoSync) {
+            pushToGitHub(true);
         }
     }
 
-    // ENVÍO DE DATOS ROBUSTO MEDIANTE FORM URL ENCODED
-    async function sendToGoogleSheets(data) {
-        if (!googleSheetsUrl) return false;
+    // MONTAÑA DE CONECTIVIDAD DIRECTA CON GITHUB API (PULL & PUSH DIRECTO)
+    async function getGitHubFileInfo() {
+        const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${githubPath}?ref=${githubBranch}`;
         try {
-            const searchParams = new URLSearchParams();
-            for (const key in data) {
-                searchParams.append(key, data[key]);
-            }
-            await fetch(googleSheetsUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: searchParams
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
             });
-            return true;
+            if (res.status === 200) {
+                const json = await res.json();
+                const decodedContent = decodeURIComponent(escape(atob(json.content)));
+                return {
+                    sha: json.sha,
+                    content: JSON.parse(decodedContent)
+                };
+            }
+        } catch (e) {
+            console.error("Error al obtener archivo de GitHub", e);
+        }
+        return null;
+    }
+
+    async function pushToGitHub(silent = false) {
+        if (!githubToken || !githubUser || !githubRepo) {
+            if (!silent) showToast("Configuración Incompleta", "Por favor introduce tus credenciales de GitHub primero.", "error");
+            return;
+        }
+
+        if (!silent) showToast("Conectando...", "Estableciendo canal seguro con GitHub...", "info");
+        
+        try {
+            const fileInfo = await getGitHubFileInfo();
+            const currentSha = fileInfo ? fileInfo.sha : null;
+            
+            // Si el archivo ya existe en GitHub, fusionar los datos para evitar sobreescribir otros ingresos
+            let finalReservations = [...reservations];
+            if (fileInfo && Array.isArray(fileInfo.content)) {
+                const localIds = new Set(reservations.map(r => r.id));
+                fileInfo.content.forEach(remoteRes => {
+                    if (!localIds.has(remoteRes.id)) {
+                        finalReservations.push(remoteRes);
+                    }
+                });
+                // Reordenar por fecha de registro descendiente
+                finalReservations.sort((a,b) => b.id.localeCompare(a.id));
+                reservations = finalReservations;
+                localStorage.setItem('local_reservations', JSON.stringify(reservations));
+            }
+
+            const rawContent = JSON.stringify(reservations, null, 2);
+            // Convertir de forma segura para no romper caracteres latinos (acentos, Ñ, etc.)
+            const base64Content = btoa(unescape(encodeURIComponent(rawContent)));
+
+            const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${githubPath}`;
+            const body = {
+                message: `Actualización de reservas por Martin Garzón - ${new Date().toLocaleString('es-MX')}`,
+                content: base64Content,
+                branch: githubBranch
+            };
+            if (currentSha) body.sha = currentSha;
+
+            const pushRes = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${githubToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (pushRes.status === 200 || pushRes.status === 201) {
+                updateGitHubIndicator(true);
+                if (!silent) showToast("¡Sincronizado!", "Tus datos se guardaron con éxito en tu repositorio de GitHub.", "success");
+            } else {
+                updateGitHubIndicator(false);
+                if (!silent) showToast("Error de Empuje", "GitHub rechazó la actualización del archivo.", "error");
+            }
         } catch (error) {
-            console.error("Error submitting to Sheets:", error);
-            return false;
+            console.error(error);
+            updateGitHubIndicator(false);
+            if (!silent) showToast("Fallo de Conexión", "No se pudo comunicar con GitHub. Revisa tu Token de acceso.", "error");
+        }
+    }
+
+    async function pullFromGitHub() {
+        if (!githubToken || !githubUser || !githubRepo) {
+            showToast("Sin Credenciales", "Llena las credenciales de tu repositorio primero.", "error");
+            return;
+        }
+
+        showToast("Descargando...", "Buscando reservas guardadas en GitHub...", "info");
+
+        try {
+            const fileInfo = await getGitHubFileInfo();
+            if (fileInfo && Array.isArray(fileInfo.content)) {
+                reservations = fileInfo.content;
+                localStorage.setItem('local_reservations', JSON.stringify(reservations));
+                renderDashboard();
+                updateGitHubIndicator(true);
+                showToast("Importado con Éxito", `Se cargaron ${reservations.length} reservas directamente desde tu nube de GitHub.`, "success");
+            } else {
+                showToast("Archivo Vacío", "No se encontraron reservas en la ruta del repositorio. Se creará de cero al subir.", "info");
+            }
+        } catch (e) {
+            showToast("Error de Importación", "No pudimos descargar el archivo reservas.json.", "error");
         }
     }
 
@@ -1155,7 +1138,7 @@ function handleRequest(e) {
         document.execCommand('copy');
         document.body.removeChild(tempTextArea);
         
-        showToast("¡Fila Copiada!", "Selecciona la celda vacía de la izquierda en tu Sheet y presiona Ctrl + V para rellenar.", "success");
+        showToast("¡Fila Copiada!", "Selecciona una celda vacía en Excel o Google Sheet y presiona Ctrl + V para rellenar.", "success");
     }
 
     // GENERAR Y BAJAR ARCHIVO EXCEL DE FORMA LOCAL (XLSX REAL)
@@ -1199,10 +1182,16 @@ function handleRequest(e) {
 <script>
     window.onload = function() {
         populateCheckInDropdown();
-        const savedUrl = localStorage.getItem('googleSheetsUrl') || defaultSheetsUrl;
-        googleSheetsUrl = savedUrl;
-        document.getElementById('sheets-url-input').value = savedUrl;
-        updateSheetsIndicator(true);
+        
+        // Cargar variables GitHub
+        document.getElementById('github-token-input').value = githubToken;
+        document.getElementById('github-user-input').value = githubUser;
+        document.getElementById('github-repo-input').value = githubRepo;
+        document.getElementById('github-path-input').value = githubPath;
+        document.getElementById('github-branch-input').value = githubBranch;
+        document.getElementById('github-autosync-input').checked = autoSync;
+
+        updateGitHubIndicator(githubToken !== '');
 
         window.addEventListener('resize', () => {
             if (financialChartInstance) financialChartInstance.resize();
@@ -1212,68 +1201,35 @@ function handleRequest(e) {
         updateAlertCount();
     }
 
-    function saveSheetsUrl() {
-        const urlInput = document.getElementById('sheets-url-input').value.trim();
-        if (urlInput.includes("docs.google.com/spreadsheets")) {
-            showToast("URL Incorrecta", "Ingresa el enlace de implementación de Apps Script, no la hoja de cálculo.", "error");
-            return;
-        }
-        if (urlInput) {
-            googleSheetsUrl = urlInput;
-            localStorage.setItem('googleSheetsUrl', urlInput);
-            updateSheetsIndicator(true);
-            showToast("Conexión Establecida", "Guardado con éxito.", "success");
-        }
+    function saveGitHubConfig() {
+        githubToken = document.getElementById('github-token-input').value.trim();
+        githubUser = document.getElementById('github-user-input').value.trim();
+        githubRepo = document.getElementById('github-repo-input').value.trim();
+        githubPath = document.getElementById('github-path-input').value.trim() || 'reservas.json';
+        githubBranch = document.getElementById('github-branch-input').value.trim() || 'main';
+        autoSync = document.getElementById('github-autosync-input').checked;
+
+        localStorage.setItem('github_token', githubToken);
+        localStorage.setItem('github_user', githubUser);
+        localStorage.setItem('github_repo', githubRepo);
+        localStorage.setItem('github_path', githubPath);
+        localStorage.setItem('github_branch', githubBranch);
+        localStorage.setItem('github_autosync', autoSync);
+
+        updateGitHubIndicator(githubToken !== '');
+        showToast("Configuración Guardada", "Tus credenciales de GitHub se han guardado con éxito.", "success");
     }
 
-    function updateSheetsIndicator(connected) {
-        const indicator = document.getElementById('sheets-indicator');
-        const indicatorText = document.getElementById('sheets-indicator-text');
+    function updateGitHubIndicator(connected) {
+        const indicator = document.getElementById('github-indicator');
+        const indicatorText = document.getElementById('github-indicator-text');
         if (connected) {
-            indicator.className = "h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse";
-            indicatorText.innerText = "Google Sheets Conectado";
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse";
+            indicatorText.innerText = "GitHub: Conectado";
+        } else {
+            indicator.className = "h-2.5 w-2.5 rounded-full bg-amber-400";
+            indicatorText.innerText = "GitHub: Desconectado";
         }
-    }
-
-    async function testSheetsConnection() {
-        showToast("Enviando Prueba", "Enviando fila de test...", "info");
-        const now = new Date();
-        const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
-        const testData = {
-            id: Date.now().toString(),
-            nombre: "Cliente de Prueba (Martin Garzón)",
-            tour: "Tour de Prueba de Conexión",
-            provedor: "Test S.A.",
-            fecha: now.toISOString().split('T')[0],
-            pax: 1,
-            checkIn: "12:00",
-            checkPoint: "Marina Marina",
-            confirmacion: "TEST-OK",
-            vendedor: "Sistema Automático",
-            moneda: "MXN",
-            tipoCambio: 1.00,
-            balance: 500,
-            balanceMxn: 500,
-            reporte: 500,
-            diferencia: 0,
-            quienDebe: "Nadie",
-            cuantoDebe: 0,
-            status: "Al Corriente",
-            fechaRegistro: currentTimestamp
-        };
-        const result = await sendToGoogleSheets(testData);
-        if (result) showToast("Prueba Procesada", "Paquete enviado. Revisa tu Google Sheet en un segundo.", "success");
-    }
-
-    function copyAppsScript() {
-        const codeElement = document.getElementById('apps-script-code');
-        const tempTextArea = document.createElement("textarea");
-        tempTextArea.value = codeElement.innerText;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select();
-        document.execCommand('copy');
-        showToast("Código Copiado", "Listo para pegar en Extensiones > Apps Script.", "success");
-        document.body.removeChild(tempTextArea);
     }
 </script>
 
@@ -1342,16 +1298,16 @@ function handleRequest(e) {
                 <td class="px-5 py-3">${res.provedor}<br><span class="text-[9px] text-slate-400">${res.fecha}</span></td>
                 <td class="px-5 py-3">${res.vendedor}</td>
                 <td class="px-5 py-3 text-right font-bold">${res.moneda === 'USD' ? `$${res.balance} USD` : `$${res.balance} MXN`}</td>
-                <td class="px-5 py-3 text-right">$${res.balanceMxn.toFixed(2)}</td>
-                <td class="px-5 py-3 text-right">$${res.reporte.toFixed(2)}</td>
+                <td class="px-5 py-3 text-right font-semibold text-slate-700">$${res.balanceMxn.toFixed(2)}</td>
+                <td class="px-5 py-3 text-right font-semibold text-slate-700">$${res.reporte.toFixed(2)}</td>
                 <td class="px-5 py-3 text-right ${res.diferencia >= 0 ? 'text-emerald-600' : 'text-rose-600'} font-bold">$${res.diferencia.toFixed(2)}</td>
                 <td class="px-5 py-3 font-bold">$${res.cuantoDebe.toFixed(2)}<br><span class="text-[8px] text-slate-400">${res.quienDebe}</span></td>
                 <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${res.status === 'Al Corriente' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">${res.status}</span></td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-1.5">
-                        <button onclick="openDetailsModal('${res.id}')" class="text-emerald-600 font-bold hover:underline">Ver</button>
+                        <button onclick="openDetailsModal('${res.id}')" class="text-indigo-600 font-bold hover:underline">Ver</button>
                         <span class="text-slate-300">|</span>
-                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido en Google Sheet" class="text-indigo-600 font-bold hover:underline flex items-center gap-0.5">
+                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido en Google Sheet" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             Copiar
                         </button>
