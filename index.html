@@ -101,8 +101,9 @@
         }
     ];
 
-    // Config default Google Sheets Web App URL
-    let googleSheetsUrl = localStorage.getItem('googleSheetsUrl') || '';
+    // Config default Google Sheets Web App URL - Pre-populated with your live URL
+    const defaultSheetsUrl = "https://script.google.com/macros/s/AKfycbwDkM6CRYnS4kTws6h2ZTsJO9792BVffKzk6DVhFiyCFXDKyQsyh85e-RUsloqMXuv5/exec";
+    let googleSheetsUrl = localStorage.getItem('googleSheetsUrl') || defaultSheetsUrl;
     
     // Target Google Sheet View URL provided by user
     const targetGoogleSheetViewUrl = "https://docs.google.com/spreadsheets/d/1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU/edit?usp=sharing";
@@ -1190,15 +1191,11 @@ function doPost(e) {
         // Initialize dynamic selects
         populateCheckInDropdown();
         
-        // Load sheets url from storage
-        const savedUrl = localStorage.getItem('googleSheetsUrl');
-        if (savedUrl) {
-            googleSheetsUrl = savedUrl;
-            document.getElementById('sheets-url-input').value = savedUrl;
-            updateSheetsIndicator(true);
-        } else {
-            updateSheetsIndicator(false);
-        }
+        // Load sheets url from storage or use our preset default from production Apps Script URL
+        const savedUrl = localStorage.getItem('googleSheetsUrl') || defaultSheetsUrl;
+        googleSheetsUrl = savedUrl;
+        document.getElementById('sheets-url-input').value = savedUrl;
+        updateSheetsIndicator(true);
 
         // Setup resize event handlers to redraw charts dynamically
         window.addEventListener('resize', () => {
