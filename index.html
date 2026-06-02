@@ -55,7 +55,8 @@
             diferencia: 275.00, // balanceMxn - reporte
             cuantoDebe: 275.00,
             quienDebe: "Vendedor",
-            status: "Pendiente" 
+            status: "Pendiente",
+            fechaRegistro: "01/06/2026 12:30:15"
         },
         {
             id: "2",
@@ -76,7 +77,8 @@
             diferencia: -500.00,
             cuantoDebe: 500.00,
             quienDebe: "Proveedor",
-            status: "Pendiente"
+            status: "Pendiente",
+            fechaRegistro: "25/05/2026 16:45:00"
         },
         {
             id: "3",
@@ -97,7 +99,8 @@
             diferencia: 0.00,
             cuantoDebe: 0.00,
             quienDebe: "Nadie",
-            status: "Al Corriente"
+            status: "Al Corriente",
+            fechaRegistro: "29/05/2026 09:15:22"
         }
     ];
 
@@ -800,7 +803,7 @@ function doPost(e) {
     }
     
     sheet.appendRow([
-      new Date(),
+      data.fechaRegistro || new Date(),
       data.nombre || "",
       data.tour || "",
       data.provedor || "",
@@ -1118,6 +1121,12 @@ function doPost(e) {
             debtAmount = Math.abs(diferenciaMxn);
         }
 
+        // Captura de fecha y hora local del registro actual
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'});
+        const formattedTime = now.toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+        const currentTimestamp = `${formattedDate} ${formattedTime}`;
+
         const newReservation = {
             id: Date.now().toString(),
             nombre: document.getElementById('nombre').value,
@@ -1137,7 +1146,8 @@ function doPost(e) {
             diferencia: diferenciaMxn,
             quienDebe: debtor,
             cuantoDebe: debtAmount,
-            status: calculatedStatus
+            status: calculatedStatus,
+            fechaRegistro: currentTimestamp // Fecha y hora local definida
         };
 
         // Unshift to state (local memory array)
@@ -1258,11 +1268,13 @@ function doPost(e) {
         }
 
         showToast("Enviando Prueba", "Enviando fila de prueba...", "info");
+        const now = new Date();
+        const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
         const testData = {
             nombre: "Cliente de Prueba (Martin Garzón)",
             tour: "Tour de Prueba",
             provedor: "Proveedor Test",
-            fecha: new Date().toISOString().split('T')[0],
+            fecha: now.toISOString().split('T')[0],
             pax: 2,
             checkIn: "10:00",
             checkPoint: "Muelle Marina Marina",
@@ -1276,7 +1288,8 @@ function doPost(e) {
             diferencia: 0,
             quienDebe: "Nadie",
             cuantoDebe: 0,
-            status: "Al Corriente"
+            status: "Al Corriente",
+            fechaRegistro: currentTimestamp
         };
 
         const result = await sendToGoogleSheets(testData);
@@ -1541,6 +1554,13 @@ function doPost(e) {
                     <span class="text-[9px] text-slate-400 uppercase block font-extrabold tracking-wider">Vendedor</span>
                     <span class="font-bold text-slate-700">${res.vendedor}</span>
                 </div>
+                <div class="col-span-2 pt-2 border-t border-slate-100/70">
+                    <span class="text-[9px] text-indigo-500 uppercase block font-extrabold tracking-wider flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Fecha y Hora de Registro
+                    </span>
+                    <span class="font-bold text-slate-900 text-xs">${res.fechaRegistro || 'No especificada'}</span>
+                </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2 py-1">
@@ -1621,7 +1641,7 @@ function doPost(e) {
 
     function exportToCSV() {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "ID,Cliente,Tour,Proveedor,Fecha,Pax,CheckIn,CheckPoint,Confirmacion,Vendedor,Moneda,TipoCambio,BalanceOriginal,BalanceMXN,ReporteMXN,DiferenciaMXN,QuienDebe,CuantoDebe,Status\n";
+        csvContent += "ID,Cliente,Tour,Proveedor,Fecha,Pax,CheckIn,CheckPoint,Confirmacion,Vendedor,Moneda,TipoCambio,BalanceOriginal,BalanceMXN,ReporteMXN,DiferenciaMXN,QuienDebe,CuantoDebe,Status,FechaRegistro\n";
 
         reservations.forEach(r => {
             const row = [
@@ -1643,7 +1663,8 @@ function doPost(e) {
                 r.diferencia,
                 r.quienDebe,
                 r.cuantoDebe,
-                r.status
+                r.status,
+                `"${r.fechaRegistro || ''}"`
             ].join(",");
             csvContent += row + "\n";
         });
