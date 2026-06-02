@@ -149,7 +149,7 @@
         </div>
         
         <nav class="flex-1 py-6 space-y-1.5">
-            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700">
+            <button onclick="switchTab('nueva-reserva'); toggleMobileMenu();" class="mobile-tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700 font-bold">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Nueva Reserva
             </button>
@@ -773,26 +773,43 @@
                     </div>
                     <pre id="apps-script-code" class="bg-slate-50 border border-slate-100 p-3 rounded-lg text-[10px] text-slate-600 overflow-x-auto max-h-48 font-mono">
 function doPost(e) {
+  return handleRequest(e);
+}
+
+function doGet(e) {
+  return handleRequest(e);
+}
+
+function handleRequest(e) {
   try {
     // Abrimos explícitamente tu hoja de cálculo mediante su ID seguro
     var spreadsheetId = "1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU";
-    var sheet = SpreadsheetApp.openById(spreadsheetId).getActiveSheet();
+    var ss = SpreadsheetApp.openById(spreadsheetId);
     
-    // Lectura robusta de payloads en formato JSON o URL-encoded (no-cors)
-    var data;
+    // SOLUCIÓN AL ERROR: Obtenemos directamente la primera pestaña (Hoja 1) 
+    // sin importar si la sesión del servidor tiene un navegador activo o no.
+    var sheet = ss.getSheets()[0]; 
+    
+    // Lectura robusta de payloads en formato JSON o URL-encoded
+    var data = {};
     if (e && e.postData && e.postData.contents) {
       try {
         data = JSON.parse(e.postData.contents);
       } catch (jsonError) {
-        data = e.parameter;
+        // Fallback por si llega url-encoded
+        var parts = e.postData.contents.split('&');
+        for (var i = 0; i < parts.length; i++) {
+          var temp = parts[i].split('=');
+          if (temp.length == 2) {
+            data[decodeURIComponent(temp[0])] = decodeURIComponent(temp[1]);
+          }
+        }
       }
     } else if (e && e.parameter) {
       data = e.parameter;
-    } else {
-      throw new Error("No se recibieron datos de entrada legibles.");
     }
     
-    // Si la hoja está vacía, añade encabezados de columnas
+    // Si la hoja está vacía, añade encabezados de columnas de forma automática
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         "Fecha Registro", "Cliente", "Tour", "Proveedor", "Fecha Servicio", 
@@ -802,8 +819,9 @@ function doPost(e) {
       ]);
     }
     
+    // Insertamos la fila con los datos limpios ordenados por columnas
     sheet.appendRow([
-      data.fechaRegistro || new Date(),
+      data.fechaRegistro || new Date().toLocaleString("es-MX"),
       data.nombre || "",
       data.tour || "",
       data.provedor || "",
@@ -824,11 +842,14 @@ function doPost(e) {
       data.status || ""
     ]);
     
-    return ContentService.createTextOutput(JSON.stringify({"result": "success"}))
-      .setMimeType(ContentService.MimeType.JSON);
+    // Respuesta de confirmación exitosa con CORS habilitado
+    return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados"}))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
   }
 }
                     </pre>
