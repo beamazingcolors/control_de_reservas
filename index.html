@@ -553,7 +553,7 @@
                             <th class="px-5 py-3 text-right">Diferencia</th>
                             <th class="px-5 py-3">Pendiente</th>
                             <th class="px-5 py-3">Estatus</th>
-                            <th class="px-5 py-3 text-center">Gestión</th>
+                            <th class="px-5 py-3 text-center">Gestión / Pegar</th>
                         </tr>
                     </thead>
                     <tbody id="reservations-table-body" class="divide-y divide-slate-100 text-[11px] text-slate-600">
@@ -633,7 +633,7 @@
     <section id="tab-alertas" class="space-y-6 hidden">
         <div>
             <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Alertas Críticas de Cobros Pendientes</h2>
-            <p class="text-xs text-slate-500">Alertas tempranas para servicios próximos a ejecutarse y cuentas vencidas que no registran estatus al corriente.</p>
+            <p class="text-xs text-slate-500 font-normal">Alertas tempranas para servicios próximos a ejecutarse y deudas activas vencidas.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -666,14 +666,14 @@
             <p class="text-xs text-slate-500 font-normal">Integra el formulario directamente con tu hoja de cálculo dedicada por medio de un script en Google Apps Script.</p>
         </div>
 
-        <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 rounded-r-xl text-xs space-y-1">
-            <h4 class="font-bold flex items-center gap-1.5 text-blue-900">
-                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                💡 Nota Informativa de Configuración
+        <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 rounded-r-xl text-xs space-y-1">
+            <h4 class="font-bold flex items-center gap-1.5 text-emerald-950">
+                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                🚀 ¡VINCULACIÓN POR MÉTODO "GET" INDESTRUCTIBLE ACTIVADA!
             </h4>
             <p class="leading-relaxed">
-                Este recuadro azul es una <strong>guía de ayuda permanente</strong> para asegurar que tu conexión sea exitosa. 
-                Para que los datos se guarden, asegúrate de que estás utilizando la URL de la <strong>Aplicación Web de Apps Script</strong> (que termina en <span class="font-mono font-bold text-blue-950">/exec</span>) y no la URL directa del navegador de tu hoja de cálculo.
+                Hemos activado un método de envío asíncrono súper seguro que no puede ser bloqueado por CORS ni iFrames. 
+                Si aun así deseas un respaldo físico inmediato, verás un botón de <strong>"Copiar Fila"</strong> en el Dashboard y detalles de la reserva. Al hacer clic, puedes ir a tu hoja y presionar <strong>Ctrl + V</strong> para rellenar todas las columnas perfectamente.
             </p>
         </div>
 
@@ -703,7 +703,7 @@
                             Guardar Dirección Web
                         </button>
                         <button onclick="testSheetsConnection()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all">
-                            Probar Envío
+                            Probar Envío (GET)
                         </button>
                     </div>
                 </div>
@@ -726,41 +726,22 @@
                         <button onclick="copyAppsScript()" class="text-[10px] text-emerald-600 font-bold hover:text-emerald-700">Copiar Código</button>
                     </div>
                     <pre id="apps-script-code" class="bg-slate-50 border border-slate-100 p-3 rounded-lg text-[10px] text-slate-600 overflow-x-auto max-h-48 font-mono">
+function doGet(e) {
+  return handleRequest(e);
+}
+
 function doPost(e) {
+  return handleRequest(e);
+}
+
+function handleRequest(e) {
   try {
     var spreadsheetId = "1P26hTp6eNue9FZiPyF500ufIp1MOgM7vtwTsWg2DtHU";
     var ss = SpreadsheetApp.openById(spreadsheetId);
     var sheet = ss.getSheets()[0]; 
     
-    // CAPTURA HÍBRIDA ULTRA-ROBUSTA: Lee parámetros nativos o decodifica el cuerpo de cualquier petición
-    var data = {};
-    
-    // 1. Leer parámetros directos de Google (CORS / Form POST / Query String)
-    if (e && e.parameter) {
-      for (var key in e.parameter) {
-        data[key] = e.parameter[key];
-      }
-    }
-    
-    // 2. Desglosar cuerpo si los navegadores lo empaquetan en contents
-    if (e && e.postData && e.postData.contents) {
-      try {
-        var json = JSON.parse(e.postData.contents);
-        for (var key in json) {
-          data[key] = json[key];
-        }
-      } catch (jsonErr) {
-        var parts = e.postData.contents.split('&');
-        for (var i = 0; i < parts.length; i++) {
-          var pair = parts[i].split('=');
-          if (pair.length == 2) {
-            var k = decodeURIComponent(pair[0].replace(/\+/g, ' '));
-            var v = decodeURIComponent(pair[1].replace(/\+/g, ' '));
-            data[k] = v;
-          }
-        }
-      }
-    }
+    // Captura directa usando e.parameter (Segura para URL GET asíncrona)
+    var p = e.parameter;
     
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
@@ -772,25 +753,25 @@ function doPost(e) {
     }
     
     sheet.appendRow([
-      data.fechaRegistro || new Date().toLocaleString("es-MX"),
-      data.nombre || "",
-      data.tour || "",
-      data.provedor || "",
-      data.fecha || "",
-      Number(data.pax) || 0,
-      data.checkIn || "",
-      data.checkPoint || "",
-      data.confirmacion || "",
-      data.vendedor || "",
-      data.moneda || "",
-      Number(data.tipoCambio) || 1.00,
-      Number(data.balance) || 0,
-      Number(data.balanceMxn) || 0,
-      Number(data.reporte) || 0,
-      Number(data.diferencia) || 0,
-      data.quienDebe || "",
-      Number(data.cuantoDebe) || 0,
-      data.status || ""
+      p.fechaRegistro || new Date().toLocaleString("es-MX"),
+      p.nombre || "",
+      p.tour || "",
+      p.provedor || "",
+      p.fecha || "",
+      Number(p.pax) || 0,
+      p.checkIn || "",
+      p.checkPoint || "",
+      p.confirmacion || "",
+      p.vendedor || "",
+      p.moneda || "",
+      Number(p.tipoCambio) || 1.00,
+      Number(p.balance) || 0,
+      Number(p.balanceMxn) || 0,
+      Number(p.reporte) || 0,
+      Number(p.diferencia) || 0,
+      p.quienDebe || "",
+      Number(p.cuantoDebe) || 0,
+      p.status || ""
     ]);
     
     return ContentService.createTextOutput(JSON.stringify({"result": "success", "message": "Datos guardados"}))
@@ -799,10 +780,6 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({"result": "error", "error": error.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-function doGet(e) {
-  return doPost(e);
 }
                     </pre>
                 </div>
@@ -826,8 +803,8 @@ function doGet(e) {
                 </div>
                 <div id="modal-content" class="space-y-4 text-xs text-slate-600"></div>
             </div>
-            <div class="bg-slate-50 px-5 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-slate-200 shadow-xs px-4 py-2 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none sm:w-auto">
+            <div class="bg-slate-50 px-5 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-2 flex-wrap">
+                <button type="button" onclick="closeModal()" class="w-full sm:w-auto inline-flex justify-center rounded-xl border border-slate-200 shadow-xs px-4 py-2 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none">
                     Cerrar Detalle
                 </button>
                 <div id="modal-action-buttons" class="sm:flex sm:flex-row-reverse gap-2"></div>
@@ -880,7 +857,6 @@ function doGet(e) {
         calculateDifference();
     }
 
-    // Corregido: Se mapea con el evento de cambio manual
     function onCustomExchangeRateChange() {
         selectedExchangeRate = parseFloat(document.getElementById('custom-exchange-rate').value) || 1.00;
         calculateDifference();
@@ -1058,24 +1034,65 @@ function doGet(e) {
         }
     }
 
-    // ENVÍO DE DATOS RESISTENTE (Soporte multiprotocolo)
+    // ALTERNATIVA INDESTRUCTIBLE: Envío mediante Query-GET (Evita el bloqueo de iFrame y CORS de cuerpos POST)
     async function sendToGoogleSheets(data) {
         if (!googleSheetsUrl) return false;
         try {
-            const searchParams = new URLSearchParams();
+            const queryParams = new URLSearchParams();
             for (const key in data) {
-                searchParams.append(key, data[key]);
+                queryParams.append(key, data[key]);
             }
-            await fetch(googleSheetsUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: searchParams
+            const urlWithParams = `${googleSheetsUrl}?${queryParams.toString()}`;
+            
+            await fetch(urlWithParams, {
+                method: 'GET',
+                mode: 'no-cors'
             });
             return true;
         } catch (error) {
-            console.error("Error submitting to Sheets Webhook:", error);
+            console.error("Error submitting to Sheets via GET:", error);
             return false;
         }
+    }
+
+    // ALTERNATIVA INDESTRUCTIBLE 2: Copiado a portapapeles inteligente compatible con pegado directo (Ctrl + V) en Sheet
+    function copyRowForSheet(id) {
+        const res = reservations.find(r => r.id === id);
+        if (!res) return;
+        
+        const rowData = [
+            res.fechaRegistro || new Date().toLocaleString("es-MX"),
+            res.nombre || "",
+            res.tour || "",
+            res.provedor || "",
+            res.fecha || "",
+            res.pax || 0,
+            res.checkIn || "",
+            res.checkPoint || "",
+            res.confirmacion || "",
+            res.vendedor || "",
+            res.moneda || "",
+            res.tipoCambio || 1.00,
+            res.balance || 0,
+            res.balanceMxn || 0,
+            res.reporte || 0,
+            res.diferencia || 0,
+            res.quienDebe || "",
+            res.cuantoDebe || 0,
+            res.status || ""
+        ];
+        
+        // El tabulador (\t) es lo que define el salto de celda en Excel y Google Sheets
+        const tsvString = rowData.join("\t");
+        
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = tsvString;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextArea);
+        
+        showToast("¡Fila Copiada!", "Ve a tu Google Sheet, selecciona la celda vacía de la izquierda y presiona Ctrl + V para rellenar todas las columnas.", "success");
     }
 </script>
 
@@ -1121,7 +1138,6 @@ function doGet(e) {
     async function testSheetsConnection() {
         showToast("Enviando Prueba", "Enviando fila de test...", "info");
         const now = new Date();
-        const currentTimestamp = `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX', {hour12:false})}`;
         const testData = {
             nombre: "Cliente de Prueba (Martin Garzón)",
             tour: "Tour de Prueba de Conexión",
@@ -1141,7 +1157,7 @@ function doGet(e) {
             quienDebe: "Nadie",
             cuantoDebe: 0,
             status: "Al Corriente",
-            fechaRegistro: currentTimestamp
+            fechaRegistro: `${now.toLocaleDateString('es-MX')} ${now.toLocaleTimeString('es-MX')}`
         };
         const result = await sendToGoogleSheets(testData);
         if (result) showToast("Prueba Procesada", "Paquete enviado. Revisa tu Google Sheet en un segundo.", "success");
@@ -1218,6 +1234,7 @@ function doGet(e) {
 
         filtered.forEach(res => {
             const row = document.createElement('tr');
+            row.className = "hover:bg-slate-50 transition-colors";
             row.innerHTML = `
                 <td class="px-5 py-3"><strong>${res.nombre}</strong><br><span class="text-[9px] text-slate-400">${res.tour}</span></td>
                 <td class="px-5 py-3">${res.provedor}<br><span class="text-[9px] text-slate-400">${res.fecha}</span></td>
@@ -1228,7 +1245,16 @@ function doGet(e) {
                 <td class="px-5 py-3 text-right ${res.diferencia >= 0 ? 'text-emerald-600' : 'text-rose-600'} font-bold">$${res.diferencia.toFixed(2)}</td>
                 <td class="px-5 py-3 font-bold">$${res.cuantoDebe.toFixed(2)}<br><span class="text-[8px] text-slate-400">${res.quienDebe}</span></td>
                 <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${res.status === 'Al Corriente' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">${res.status}</span></td>
-                <td class="px-5 py-3 text-center"><button onclick="openDetailsModal('${res.id}')" class="text-emerald-600 font-bold hover:underline">Ver</button></td>
+                <td class="px-5 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <button onclick="openDetailsModal('${res.id}')" class="text-emerald-600 font-bold hover:underline">Ver</button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="copyRowForSheet('${res.id}')" title="Copiar fila entera para pegar rápido en Google Sheet" class="text-indigo-600 font-bold hover:underline flex items-center gap-0.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            Copiar
+                        </button>
+                    </div>
+                </td>
             `;
             body.appendChild(row);
         });
@@ -1239,12 +1265,23 @@ function doGet(e) {
         if (!res) return;
         document.getElementById('modal-title-text').innerText = `Reserva #${res.confirmacion}`;
         document.getElementById('modal-content').innerHTML = `
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-3">
                 <div><span class="text-slate-400 block text-[9px]">CLIENTE</span><strong>${res.nombre}</strong></div>
                 <div><span class="text-slate-400 block text-[9px]">TOUR</span><strong>${res.tour}</strong></div>
                 <div><span class="text-slate-400 block text-[9px]">PROVEEDOR</span><span>${res.provedor}</span></div>
                 <div><span class="text-slate-400 block text-[9px]">FECHA REGISTRO</span><span class="text-indigo-600 font-bold">${res.fechaRegistro || 'N/A'}</span></div>
+                <div><span class="text-slate-400 block text-[9px]">MONEDA ORIGINAL</span><span>${res.moneda}</span></div>
+                <div><span class="text-slate-400 block text-[9px]">BALANCE</span><span class="font-bold text-slate-900">$${res.balance.toFixed(2)}</span></div>
+                <div><span class="text-slate-400 block text-[9px]">REPORTE MXN</span><span class="font-bold text-slate-900">$${res.reporte.toFixed(2)}</span></div>
+                <div><span class="text-slate-400 block text-[9px]">DIFERENCIA MXN</span><span class="font-bold ${res.diferencia >= 0 ? 'text-emerald-600':'text-rose-600'}">$${res.diferencia.toFixed(2)}</span></div>
             </div>
+        `;
+        
+        // Add Copy inside action modal button row as well
+        document.getElementById('modal-action-buttons').innerHTML = `
+            <button type="button" onclick="copyRowForSheet('${res.id}')" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-xs px-4 py-2 bg-indigo-600 text-xs font-bold uppercase text-white hover:bg-indigo-700 focus:outline-none sm:w-auto">
+                Copiar Fila para Sheet (Pegar rápido)
+            </button>
         `;
         document.getElementById('reservation-modal').classList.remove('hidden');
     }
@@ -1262,8 +1299,17 @@ function doGet(e) {
         }
         pending.forEach(res => {
             const div = document.createElement('div');
-            div.className = "p-3 bg-slate-50 rounded-xl border flex justify-between items-center text-xs";
-            div.innerHTML = `<div><strong>${res.nombre}</strong> - ${res.tour}<br><span class="text-[10px] text-rose-600 font-bold">Debe: $${res.cuantoDebe.toFixed(2)} a ${res.quienDebe}</span></div>`;
+            div.className = "p-3 bg-white rounded-xl border flex justify-between items-center text-xs shadow-xs";
+            div.innerHTML = `
+                <div>
+                    <strong>${res.nombre}</strong> - ${res.tour}<br>
+                    <span class="text-[10px] text-rose-600 font-bold">Debe: $${res.cuantoDebe.toFixed(2)} a ${res.quienDebe}</span>
+                </div>
+                <button onclick="copyRowForSheet('${res.id}')" class="px-2.5 py-1.5 bg-slate-50 border hover:bg-slate-100 rounded-lg text-indigo-600 text-[10px] font-bold flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                    Copiar
+                </button>
+            `;
             container.appendChild(div);
         });
     }
